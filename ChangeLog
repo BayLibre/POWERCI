@@ -1,0 +1,4 @@
+2015-11-13  Marc TITINGER  <mtitinger@baylibre.com>
+
+	* ChangeLog: create
+	* .git: git init, adding github remote for now.
