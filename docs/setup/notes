@@ -1,0 +1,6 @@
+Repo init
+---------
+
+repo init -u git@github.com:mtitinger/powerci-manifests.git
+repo sync
+
