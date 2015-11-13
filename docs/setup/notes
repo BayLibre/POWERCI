@@ -4,3 +4,8 @@ Repo init
 repo init -u git@github.com:mtitinger/powerci-manifests.git
 repo sync
 
+Lava installation
+----------------
+
+sudo apt-get install lava
+
