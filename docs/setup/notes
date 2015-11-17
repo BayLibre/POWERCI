@@ -7,5 +7,49 @@ repo sync
 Lava installation
 ----------------
 
+
+https://wiki.debian.org/LAVA
+
+
 sudo apt-get install lava
+standalone server
+"powerci-lava"
+Postgres port 5432
+internet site config for email
+fully qualified domain name: powerci.com
+
+Lava server branding:
+ /etc/lava-server/settings.conf
+
+
+Postgress
+---------
+
+sudo pg_lsclusters
+cat /var/log/postgresql/postgresql-9.4-main.log
+
+ https://git.linaro.org/lava/lavapdu.git 
+
+
+TFTP support requirement
+-------------------------
+
+Check that your /etc/default/tftpd-hpa file references /var/lib/lava/dispatcher/tmp and continue as before.
+sudo cp /usr/share/lava-dispatcher/tftpd-hpa /etc/default/tftpd-hpa
+
+Django
+-----
+
+setup apache virtual host: 
+https://www.digitalocean.com/community/tutorials/how-to-set-up-apache-virtual-hosts-on-ubuntu-14-04-lts
+
+sudo lava-server manage createsuperuser --username default --email=$EMAIL
+
+/etc/apache2/sites-available$ sudo cp lava-server.conf powerci.conf
+sudo a2ensite powerci.conf
+
+
+$ sudo a2dissite 000-default
+$ sudo a2ensite lava-server.conf
+$ sudo service apache2 restart
 
