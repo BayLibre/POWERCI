@@ -1,1 +1,1 @@
-# POWERCI
+docs/setup/notes.md
