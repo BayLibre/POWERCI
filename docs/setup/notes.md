@@ -2,7 +2,7 @@
 
 ## preliminary packages installation ##
 
-` sudo apt-get install vim gitk git-gui pandoc lynx terminator`
+` sudo apt-get install vim gitk git-gui pandoc lynx terminator conmux`
 
 some required packages like ser2net and tftp-hpa are part of
 the lava macro package.
@@ -21,7 +21,7 @@ the lava macro package.
  * Name "powerci-lava"
  * Postgres port 5432
  * internet site config for email
- * fully qualified domain name: powerci.com
+ * fully qualified domain name: powerci.org
 
 ## PowerCI-lava fs-overlay ##
 
@@ -87,7 +87,7 @@ sudo cp /usr/share/lava-dispatcher/tftpd-hpa /etc/default/tftpd-hpa
 
 ## Setup user and Test definitions ##
 
-### Django ### 
+### Django ###
 
 ` sudo lava-server manage createsuperuser --username default --email=$EMAIL`
 
