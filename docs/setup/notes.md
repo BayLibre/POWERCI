@@ -2,20 +2,19 @@
 
 ## preliminary packages installation ##
 
-> sudo apt-get install vim gitk git-gui pandoc lynx terminator
+` sudo apt-get install vim gitk git-gui pandoc lynx terminator`
 
 some required packages like ser2net and tftp-hpa are part of
 the lava macro package.
 
 ## Repo init ##
 
-> repo init -u git@github.com:mtitinger/powerci-manifests.git
-
-> Repo sync
+` repo init -u git@github.com:mtitinger/powerci-manifests.git`
+` Repo sync`
 
 ## Lava installation ##
 
-> sudo apt-get install lava
+` sudo apt-get install lava`
 
 ### Interactive installation option ###
  * standalone server
@@ -28,7 +27,7 @@ the lava macro package.
 
 Some standard LAVA-debian files needs being simlinked to this repo
 
-> sudo ln -s ~/POWERCI/fs-overlay/etc/lava-dispatcher/device-types /etc/lava-dispatcher/device-types
+` sudo ln -s ~/POWERCI/fs-overlay/etc/lava-dispatcher/device-types /etc/lava-dispatcher/device-types`
 
 check in fs-overlay to not miss anything, for instance:
 
@@ -47,7 +46,7 @@ check in fs-overlay to not miss anything, for instance:
 
 ## Howto populate the Devices ##
 
-As per http://127.0.1.1/static/docs/known-devices.html
+As per <http://127.0.1.1/static/docs/known-devices.html>
 
   * check that the device-type exists in lava-dispatcher/device-types
   * use the helper to add each board
@@ -57,19 +56,24 @@ As per http://127.0.1.1/static/docs/known-devices.html
 
 ## Baylibre PowerCI Lab setup script ##
 
-<code>
- sudo /usr/share/lava-server/add_device.py beaglebone-black dut0-bbb -t 2000 -p 100 -b
- sudo /usr/share/lava-server/add_device.py beaglebone-black dut1-bbb -t 2001 -p 101
- sudo /usr/share/lava-server/add_device.py juno dut2-juno -t 2010 -p 110
-</code>
+run the script located under:
 
-   * remember restarting those services
+> POWERCI/scripts/lab-setup/add-boards-baylibre.sh
 
-<code>
- sudo /etc/init.d/ser2net restart
- sudo service lava-server restart
- sudo service apache2 restart
-</code>
+```
+	sudo /usr/share/lava-server/add_device.py kvm kvm01
+	sudo /usr/share/lava-server/add_device.py beaglebone-black dut0-bbb -t 2000 -p 100 -b
+	sudo /usr/share/lava-server/add_device.py beaglebone-black dut1-bbb -t 2001 -p 101
+	sudo /usr/share/lava-server/add_device.py juno dut2-juno -t 2010 -p 110
+```
+
+remember restarting those services
+
+```
+	sudo /etc/init.d/ser2net restart
+	sudo service lava-server restart
+	sudo service apache2 restart
+```
 
 ## Setting up the boot process ##
 
@@ -85,7 +89,7 @@ sudo cp /usr/share/lava-dispatcher/tftpd-hpa /etc/default/tftpd-hpa
 
 ### Django ### 
 
-sudo lava-server manage createsuperuser --username default --email=$EMAIL
+` sudo lava-server manage createsuperuser --username default --email=$EMAIL`
 
 # Misc #
 
