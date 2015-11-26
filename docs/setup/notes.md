@@ -4,7 +4,7 @@
 
 > As for the KernelCI/PowerCI FrontEnd, a different virtual machine could be considered.
 
-> We heerin assume the host machine (virtual or not) is Ubuntu 14+
+> We herein assume the host machine (virtual or not) is Ubuntu 14+
 
 ## preliminary packages and services installation ##
 
