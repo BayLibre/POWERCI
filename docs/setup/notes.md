@@ -1,8 +1,8 @@
 # Initial Machine Setup #
 
-## preliminary packages installation ##
+## preliminary packages and services installation ##
 
-` sudo apt-get install vim gitk git-gui pandoc lynx terminator conmux`
+` sudo apt-get install vim gitk git-gui pandoc lynx terminator conmux minicom`
 
 some required packages like ser2net and tftp-hpa are part of
 the lava macro package.
@@ -15,6 +15,10 @@ the lava macro package.
 ## Lava installation ##
 
 ` sudo apt-get install lava`
+
+ * NFS          is installed by the lava pkg, with exports defaulting to /var/lib/lava/dispatcher/tmp
+ * TFTP-HPA     is installed by the lava pkg, with exports defaulting to /var/lib/lava/dispatcher/tmp
+(see /etc/default/tftpd-hpa)
 
 ### Interactive installation option ###
  * standalone server
