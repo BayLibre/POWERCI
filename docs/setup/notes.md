@@ -1,5 +1,11 @@
 # Initial Machine Setup #
 
+> This applies to the LAVA infrastructure i.e. Dispatcher and Scheduler
+
+> As for the KernelCI/PowerCI FrontEnd, a different virtual machine could be considered.
+
+> We heerin assume the host machine (virtual or not) is Ubuntu 14+
+
 ## preliminary packages and services installation ##
 
 ` sudo apt-get install vim gitk git-gui pandoc lynx terminator conmux minicom`
