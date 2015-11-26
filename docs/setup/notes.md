@@ -27,9 +27,9 @@ the lava macro package.
  * internet site config for email
  * fully qualified domain name: powerci.org
 
-## PowerCI-lava fs-overlay ##
+## PowerCI-lava fs-overlays ##
 
-Some standard LAVA-debian files needs being simlinked to this repo
+Some standard LAVA-debian files needs being simlinked to this repo, like for instance:
 
 ` sudo ln -s ~/POWERCI/fs-overlay/etc/lava-dispatcher/device-types /etc/lava-dispatcher/device-types`
 
@@ -83,8 +83,7 @@ remember restarting those services
 
 ### TFTP support requirement ###
 
-Check that your /etc/default/tftpd-hpa file references /var/lib/lava/dispatcher/tmp and continue as before.
-sudo cp /usr/share/lava-dispatcher/tftpd-hpa /etc/default/tftpd-hpa
+Check that your /etc/default/tftpd-hpa file references /var/lib/lava/dispatcher/tmp, or sudo cp /usr/share/lava-dispatcher/tftpd-hpa /etc/default/tftpd-hpa
 
 
 # Post Jobs #
