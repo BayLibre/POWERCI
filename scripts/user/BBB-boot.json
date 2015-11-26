@@ -1,0 +1,26 @@
+{
+  "_comment": "Simple boot test on BBB",
+  "job_name": "BBB-boot",
+  "device_type": "beaglebone-black",
+  "timeout": 1800,
+  "actions": [
+    {
+      "command": "deploy_linaro_image",
+      "parameters":
+        {
+          "image": "http://images.validation.linaro.org/lava-masters/beaglebone-master.img.gz"
+        }
+    },
+    {
+      "command": "boot_linaro_image"
+    },
+    {
+      "command": "submit_results",
+      "parameters":
+        {
+          "server": "http://powerci@192.168.1.73/RPC2/",
+          "stream": "/anonymous/powerci/"
+        }
+    }
+  ]
+}
