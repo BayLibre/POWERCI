@@ -87,6 +87,30 @@ remember restarting those services
 
 ## Setting up the boot process ##
 
+### Power Cycling the boards ###
+
+until ACME is supported in PDUDaemon, the test JSON files can be adapted to log into ACME and switch the power probes GPIOs.
+The script "acme_0#>/usr/bin/dut-switch-on 2" for instance will power on the DUT connected to PROBE2.
+the following scripts must be deployed on the ACME image create with buildroot, the are currently available in the git <blah>
+
+> dut-switch-on {1..8}		enable gpio to power up PROBE{1..8}
+
+> dut-switch-off {1..8}		disable gpio to power down PROBE{1..8}
+
+> dut-hard-reset {1..8}		cycle gpio to reboot PROBE{1..8}
+
+Those commands are used in the devices/{device}.conf files:
+
+```
+	POWERCI/fs-overlay/etc/lava-dispatcher/devices$ cat dut0-bbb.conf
+
+		device_type = beaglebone-black
+		hostname = dut0-bbb
+		connection_command = telnet localhost 2000
+		hard_reset_command = ssh -t root@acme_0.local dut-hard-reset 1
+		power_off_cmd = ssh -t root@acme_0.local dut-switch-off 1
+```
+
 ### TFTP support requirement ###
 
 Check that your /etc/default/tftpd-hpa file references /var/lib/lava/dispatcher/tmp, or sudo cp /usr/share/lava-dispatcher/tftpd-hpa /etc/default/tftpd-hpa

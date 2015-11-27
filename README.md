@@ -1,1 +1,1 @@
-docs/setup/notes.md
+docs/setup.md
