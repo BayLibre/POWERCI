@@ -1,4 +1,4 @@
-export LAVA_SERVER_IP=192.168.1.73
+export LAVA_SERVER_IP=powerci-lava-vbox.local
 export LAVA_PROXY=""
 
 # This must be consistent with the auth in all steps or 
