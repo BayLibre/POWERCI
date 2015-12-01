@@ -33,6 +33,10 @@ remember restarting those services
 
 ## Setting up the boot process ##
 
+### Adding a board, creating master images ###
+
+the following link is useful <https://validation.linaro.org/static/docs/lava-image-creation.html#preparing-a-master-image>
+
 ### Power Cycling the boards ###
 
 until ACME is supported in PDUDaemon, the test JSON files can be adapted to log into ACME and switch the power probes GPIOs.
