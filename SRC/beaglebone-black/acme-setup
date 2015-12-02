@@ -1,0 +1,43 @@
+#!/bin/bash
+
+## Set your Home here (I`m using an external drive)
+export ACME_HOME=/home/powerci/POWERCI/SRC/beaglebone-black
+export ACME_SCRIPTS=$ACME_HOME/scripts
+export KERNEL_BUILD=$ACME_HOME/kbuild
+export ACME_PATCHES=$ACME_HOME/patches
+export KERNEL_SRC=$ACME_HOME/../linux
+export OUTPUT_DIR=$ACME_HOME/output
+
+export ARCH=arm
+export CROSS_COMPILE=arm-linux-gnueabi-
+export INSTALL_MOD_PATH=$ACME_HOME/nfsroot
+
+mkdir -p $ACME_SCRIPTS
+mkdir -p $OUTPUT_DIR/dtbs
+
+# any of nuttx or phabos
+export PATH+=:$ACME_SCRIPTS
+
+echo "if [ -d $OUTPUT_DIR ]; then " > $ACME_SCRIPTS/acme-k-install
+echo "sudo cp $INSTALL_MOD_PATH/zImage $OUTPUT_DIR" >> $ACME_SCRIPTS/acme-k-install
+echo "sudo cp $INSTALL_MOD_PATH/am335x-boneblack.dtb $OUTPUT_DIR/dtbs"  >> $ACME_SCRIPTS/acme-k-install
+echo "fi" >> $ACME_SCRIPTS/acme-k-install
+echo "sync" >> $ACME_SCRIPTS/acme-k-install
+
+## kprep
+echo "mkdir -p $KERNEL_BUILD" > $ACME_SCRIPTS/kprep
+echo "make -C $KERNEL_SRC O=$KERNEL_BUILD acme_defconfig"  >> $ACME_SCRIPTS/kprep
+echo "cd  $KERNEL_BUILD && kconfig-tweak --enable FUNCTION_TRACER" >> $ACME_SCRIPTS/kprep
+
+## kbuild
+echo "make -j 5 -C $KERNEL_BUILD zImage modules dtbs" > $ACME_SCRIPTS/kbuild
+echo "make -C $KERNEL_BUILD modules_install" >> $ACME_SCRIPTS/kbuild
+echo "sudo cp $KERNEL_BUILD/arch/arm/boot/zImage $OUTPUT_DIR"  >> $ACME_SCRIPTS/kbuild
+echo "sudo cp $KERNEL_BUILD/arch/arm/boot/dts/am335x-boneblack.dtb $OUTPUT_DIR/dtbs"  >> $ACME_SCRIPTS/kbuild
+
+###br-prep
+echo 'export CONFIG_="BR2_"' > $ACME_SCRIPTS/br-prep
+echo "cd $ACME_HOME/buildroot && kconfig-tweak --enable PACKAGE_TRACE_CMD" >> $ACME_SCRIPTS/br-prep
+echo "cd $ACME_HOME/buildroot && kconfig-tweak --enable PACKAGE_LM_SENSORS" >> $ACME_SCRIPTS/br-prep
+
+chmod +x $ACME_SCRIPTS/*
