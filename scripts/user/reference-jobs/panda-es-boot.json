@@ -1,14 +1,14 @@
 {
-  "_comment": "Simple boot test on BBB",
-  "job_name": "BBB-boot",
-  "device_type": "beaglebone-black",
+  "_comment": "Simple boot test on panda",
+  "job_name": "panda-boot",
+  "device_type": "panda-es",
   "timeout": 1800,
   "actions": [
     {
       "command": "deploy_linaro_image",
       "parameters":
         {
-          "image": "http://images.validation.linaro.org/lava-masters/beaglebone-master.img.gz"
+          "image": "CREATE A TEST IMAGE.gz"
         }
     },
     {

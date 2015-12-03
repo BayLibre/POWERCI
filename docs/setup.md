@@ -9,6 +9,7 @@
 ## preliminary packages and services installation ##
 
 ` sudo apt-get install vim gitk git-gui pandoc lynx terminator conmux minicom`
+  sudo apt-get install qemu gcc-arm-linux-gnueabi
 
 some required packages like ser2net and tftp-hpa are part of
 the lava macro package.

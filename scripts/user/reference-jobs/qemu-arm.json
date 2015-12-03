@@ -1,0 +1,23 @@
+{
+  "timeout": 18000,
+  "job_name": "qemu-arm-test",
+  "device_type": "qemu-arm",
+  "target": "qemu-arm01",
+  "actions": [
+    {
+        "command": "deploy_linaro_kernel",
+        "parameters": {
+            "kernel": "http://images.validation.linaro.org/functional-test-images/qemu-arm/zImage-qemuarm.bin",
+            "login_prompt": "login:",
+            "rootfs": "http://images.validation.linaro.org/functional-test-images/qemu-arm/core-image-minimal-qemuarm.ext3",
+            "username": "root"
+        }
+    },
+    {
+        "command": "boot_linaro_image",
+        "parameters": {
+            "test_image_prompt": "root@qemu-system-arm:~#"
+        }
+    }
+  ]
+}
