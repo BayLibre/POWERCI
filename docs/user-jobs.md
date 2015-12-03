@@ -1,3 +1,7 @@
+# User workstation tools installation #
+
+` sudo apt-get install lava-tool`
+
 # Post Jobs #
 
 ## Setup user and Test definitions ##
