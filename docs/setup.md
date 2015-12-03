@@ -21,6 +21,14 @@ the lava macro package.
 
 ## Lava installation ##
 
+### Adding the repository ###
+
+` wget http://images.validation.linaro.org/trusty-repo/trusty-repo.key.asc`
+` sudo apt-key add trusty-repo.key.asc`
+` sudo apt-get update`
+
+### Installint the lava full set ###
+
 ` sudo apt-get install lava`
 
  * NFS          is installed by the lava pkg, with exports defaulting to /var/lib/lava/dispatcher/tmp
