@@ -23,6 +23,9 @@ the lava macro package.
 
 ### Adding the repository ###
 
+According to the documentation, do the following:
+
+` sudo apt-get upgrade`
 ` wget http://images.validation.linaro.org/trusty-repo/trusty-repo.key.asc`
 ` sudo apt-key add trusty-repo.key.asc`
 ` sudo apt-get update`
