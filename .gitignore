@@ -2,4 +2,5 @@
 *.o
 *.pyc
 SRC/beaglebone-black/kbuild
+fs-overlay/etc/lava-dispatcher/devices/*.conf
 *~
