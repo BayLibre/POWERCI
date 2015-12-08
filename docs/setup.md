@@ -4,17 +4,27 @@
 
 > As for the KernelCI/PowerCI FrontEnd, a different virtual machine could be considered.
 
-> We herein assume the host machine (virtual or not) is Ubuntu 14+
+> We herein assume the host machine (virtual or not) is Ubuntu 14+, with a sudoer user powerci, and a configured static IP address.
+
+> The machine name shall be lab-baylibre
 
 ## preliminary packages and services installation ##
 
-` sudo apt-get install vim gitk git-gui pandoc lynx terminator conmux minicom`
-  sudo apt-get install qemu gcc-arm-linux-gnueabi
+` sudo apt-get install openssh-server vim gitk git-gui pandoc lynx terminator conmux minicom repo qemu gcc-arm-linux-gnueabi tree meld`
 
 some required packages like ser2net and tftp-hpa are part of
 the lava macro package.
 
+Re-instate vim as the standard editor with:
+
+` sudo update-alternatives --config editor`
+
+
 ## Repo init ##
+
+Make sure to create an ssh id_rsa.pub key for the powerci user, and add it to the various git repos used (baylibre and github)
+
+` mkdir -p /home/powerci/POWERCI && cd POWERCI`
 
 ` repo init -u git@github.com:mtitinger/powerci-manifests.git`
 
@@ -27,11 +37,14 @@ the lava macro package.
 According to the documentation, do the following:
 
 ` sudo apt-get upgrade`
+
 ` wget http://images.validation.linaro.org/trusty-repo/trusty-repo.key.asc`
+
 ` sudo apt-key add trusty-repo.key.asc`
+
 ` sudo apt-get update`
 
-### Installint the lava full set ###
+### Installing the LAVA "full set" ###
 
 ` sudo apt-get install lava`
 
@@ -41,12 +54,12 @@ According to the documentation, do the following:
 
 ### Interactive installation option ###
  * standalone server
- * Name "powerci-lava"
+ * Name "lab-baylibre"
  * Postgres port 5432
  * internet site config for email
- * fully qualified domain name: powerci.org
+ * fully qualified domain name: baylibre.com
 
-## PowerCI-lava fs-overlays ##
+##  LAVA fs-overlays ##
 
 Some standard LAVA-debian files needs being simlinked to this repo, like for instance:
 
@@ -57,13 +70,42 @@ check in fs-overlay to not miss anything, for instance:
 ### General server branding ###
 
  * /etc/lava-server/settings.conf
- * /etc/lava-server/instance.conf
  * /etc/apache2/sites-available/powerci.conf
 
 ### Dispatcher Population ###
 
  * /etc/ser2net.conf
  * /etc/lava-dispatcher/device-types
+ * /etc/lava-dispatcher/devices
+
+## Initial LAVA Server Administration ##
+
+### Apache site enabling
+
+Query the active site with:
+
+<code>
+powerci@lab-baylibre:~$ sudo a2query -s
+000-default (enabled by site administrator)
+</code>
+
+You may now disable the default site, and enable the lava instance:
+
+> sudo a2dissite 000-default
+
+> sudo a2ensite lava-server.conf
+
+> sudo service apache2 restart
+
+### Create the LAVA superuser account ###
+
+> sudo lava-server manage createsuperuser --username lab-admin --email=lab-admin@baylibre.com
+
+> password: powerci
+
+### Users and Groups ###
+
+see <https://wiki.debian.org/LAVA>
 
 # LAB Setup #
 
@@ -73,7 +115,7 @@ check in fs-overlay to not miss anything, for instance:
 
  See [setup-lab.md](docs/setup-lab.md)
 
-# Postting Jobs, using LAVA #
+# Posting Jobs, using LAVA #
 
  This section is about using scripts and lava-tools to posting jobs.
 
@@ -81,9 +123,3 @@ check in fs-overlay to not miss anything, for instance:
 
  See [user-jobs.md](docs/user-jobs.md)
 
-# Misc #
-
-## Postgress notes ##
-
-sudo pg_lsclusters
-cat /var/log/postgresql/postgresql-9.4-main.log
