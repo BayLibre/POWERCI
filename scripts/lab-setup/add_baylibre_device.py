@@ -168,11 +168,11 @@ def main(dt, name, options):
             exit(1)
         config['hard_reset_command'] = "/usr/bin/pduclient " \
                                        "--daemon localhost " \
-                                       "--hostname acme0-baylibre.local --command dut-hard-reset " \
+                                       "--hostname acme0-baylibre.local --command reboot" \
                                        "--port %02d" % options.pduport
         config['power_off_cmd'] = "/usr/bin/pduclient " \
                                   "--daemon localhost " \
-                                  "--hostname acme0-baylibre.local --command dut-switch-off " \
+                                  "--hostname acme0-baylibre.local --command off " \
                                   "--port %02d" % options.pduport
     else:
         print("Skipping hard_reset_command for %s" % name)
