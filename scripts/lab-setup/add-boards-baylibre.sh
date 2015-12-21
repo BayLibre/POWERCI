@@ -20,7 +20,7 @@ echo "sudo ln -s ~/POWERCI/fs-overlay/etc/lava-dispatcher/devices /etc/lava-disp
 
 echo "if acme is not yet integrated as a pdudaemon device, you may have to manually set the"
 echo "following commands:"
-echo " hard_reset_command = ssh -t root@acme0-baylibre.local dut-hard-reset 1"
-echo " power_off_cmd = ssh -t root@acme0-baylibre.local dut-switch-off 1"
+echo " hard_reset_command = ssh -t root@baylibre-acme.local dut-hard-reset 1"
+echo " power_off_cmd = ssh -t root@baylibre-acme.local dut-switch-off 1"
 
 echo "if acme is integrated into pdudaemon, then setup lavapdu.conf with 'pdu' as acme type"
