@@ -18,7 +18,7 @@
       "command": "submit_results",
       "parameters":
         {
-          "server": "http://powerci@powerci-lava-disp.local/RPC2/",
+          "server": "http://powerci@scratch.local/RPC2/",
           "stream": "/anonymous/powerci/"
         }
     }

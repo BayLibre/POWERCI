@@ -103,6 +103,9 @@ You may now disable the default site, and enable the lava instance:
 
 > password: powerci
 
+for debug only, it is recommended to settings the log level for the server
+to 'debug', in file /etc/init.d/lava-server
+
 ### Users and Groups ###
 
 see <https://wiki.debian.org/LAVA>
