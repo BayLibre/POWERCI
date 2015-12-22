@@ -1,6 +1,6 @@
 <IfModule mod_ssl.c>
 	<VirtualHost *:443>
-		ServerAdmin lab-baylibre@baylibre.com
+		ServerAdmin lab-admin@baylibre.com
 		ServerName lab-baylibre
 
     Alias /static/ /usr/share/lava-server/static/
