@@ -15,6 +15,7 @@ mkdir -p $USER-jobs
 cp $1/*.json $USER-jobs
 
 find $USER-jobs -name *.json | xargs sed 's#LAVA_SERVER_IP#'"$LAVA_SERVER_IP"'#' -i
+find $USER-jobs -name *.json | xargs sed 's#LAVA_SERVER#'"$LAVA_SERVER"'#' -i
 find $USER-jobs -name *.json | xargs sed 's#BUNDLE_STREAM#'"$BUNDLE_STREAM"'#' -i
 find $USER-jobs -name *.json | xargs sed 's#LAVA_RPC_LOGIN#'"$LAVA_RPC_LOGIN"'#' -i
 
