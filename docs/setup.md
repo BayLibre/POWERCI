@@ -6,7 +6,20 @@
 
 > We herein assume the host machine (virtual or not) is Ubuntu 14+, with a sudoer user powerci, and a configured static IP address.
 
-> The machine name shall be lab-baylibre
+> The machine name shall be lava-baylibre
+
+Note that since we will be using different ports on server side (80/443) or client side (10080/10443)
+It is mandatory to define on each machine an alias in /etc/hosts:
+
+ * Server Side
+```
+lava.baylibre.com:80	lava-baylibre
+```
+
+ * Client Side
+```
+lava.baylibre.com:10080    lava-baylibre
+```
 
 ## preliminary packages and services installation ##
 

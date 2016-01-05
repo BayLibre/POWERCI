@@ -1,5 +1,4 @@
 [baylibre]
-server: http://lava.baylibre.com:10080/RPC2/
+server: http://lava-baylibre/RPC2/
 username: powerci
 token: om0ossq3crae53e7i6gb8rggkks0jb8i2ghexnnpw6x0t59mkembja8enhjp04cjuldo3eghnd6dc6dle18f1wrd0eiwjrorr06kputl2ac7t4quk966walf0xy19b1f
-stream: /anonymous/powerci/
