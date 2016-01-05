@@ -18,8 +18,8 @@
       "command": "submit_results",
       "parameters":
         {
-          "server": "http://powerci@lava-baylibre/RPC2/",
-          "stream": "/anonymous/powerci/"
+          "server": "LAVA_RPC_LOGIN",
+          "stream": "BUNDLE_STREAM"
         }
     }
   ]
