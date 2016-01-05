@@ -18,8 +18,8 @@
       "command": "submit_results",
       "parameters":
         {
-          "server": "LAVA_RPC_LOGIN",
-          "stream": "BUNDLE_STREAM"
+          "server": "LAVA_SERVER",
+          "stream": "LAVA_STREAM"
         }
     }
   ]
