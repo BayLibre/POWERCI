@@ -8,18 +8,9 @@
 
 > The machine name shall be lava-baylibre
 
-Note that since we will be using different ports on server side (80/443) or client side (10080/10443)
-It is mandatory to define on each machine an alias in /etc/hosts:
+Note that you will need to use the same port locally and remotely, for the apache virtualhost, for instance
+10080
 
- * Server Side
-```
-lava.baylibre.com:80	lava-baylibre
-```
-
- * Client Side
-```
-lava.baylibre.com:10080    lava-baylibre
-```
 
 ## preliminary packages and services installation ##
 
@@ -64,6 +55,10 @@ According to the documentation, do the following:
  * NFS          is installed by the lava pkg, with exports defaulting to /var/lib/lava/dispatcher/tmp
  * TFTP-HPA     is installed by the lava pkg, with exports defaulting to /var/lib/lava/dispatcher/tmp
 (see /etc/default/tftpd-hpa)
+
+this manual step might be necessary:
+
+> sudo cp /usr/share/lava-dispatcher/tftpd-hpa /etc/default/tftpd-hpa
 
 ### Interactive installation option ###
  * standalone server
