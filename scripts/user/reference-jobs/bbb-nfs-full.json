@@ -45,7 +45,7 @@
     {
       "command": "submit_results",
       "parameters": {
-        "stream": "LAVA_STREAM",
+        "stream": "BUNDLE_STREAM",
         "server": "LAVA_SERVER"
       }
     }
