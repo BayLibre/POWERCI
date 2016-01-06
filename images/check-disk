@@ -1,16 +1,15 @@
 #!/bin/bash
 
-if [ -z "$DEV_SDCARD" ]
+if [ -z "$1" ]
 then
-	echo ACME_SDCARD not set
-	exit -2
+ echo "usage: $0 /dev/sdX"
 fi
 
-size=$(df -k $DEV_SDCARD | tail -1 | awk '{print $2}')
+size=$(df -k $1 | tail -1 | awk '{print $2}')
 
 if [ "$size" -gt "170000000" ]
 then
-        echo $DEV_SDCARD "has suspiscious size of" $size "bytes"
+        echo $1 "has suspiscious size of" $size "bytes"
 	echo "refusing to process"
         exit -1
 fi
