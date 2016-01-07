@@ -1,0 +1,4 @@
+#!/bin/bash
+cp -R $1 ../OLD/$1-`date -I`
+mv $1 lava-ci
+cd lava-ci && lava-report.py --boot $1 --lab lab-baylibre --token bb4d438a-f412-4c65-9f7c-9daefd253ee7 --api http://api.kernelci.org
