@@ -2,9 +2,11 @@
 
 ` sudo apt-get install lava-tool`
 
-# Post Jobs #
+# Posting Jobs #
 
-## Setup user and Test definitions ##
+see README in scripts.
+
+## User Setup and Test ##
 
 * make sure that the Django user has been created for $USER using the admin link :<http://127.0.1.1/admin/auth/user/>
 * copy and tune the lava-env.inc file
