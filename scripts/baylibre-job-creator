@@ -2,5 +2,5 @@
 TARGETS=beaglebone-black panda-es
 TAG=next/next-20160104/
 
-lava-kernel-ci-job-creator.py http://storage.kernelci.org/$TAG --plans boot --targets beaglebone-black panda-es  --arch arm
+lava-kernel-ci-job-creator.py --section baylibre http://storage.kernelci.org/$TAG --plans boot --targets beaglebone-black panda-es  --arch arm
 
