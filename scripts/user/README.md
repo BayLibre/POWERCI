@@ -24,3 +24,7 @@ you may want to pull from the ACME repo for instance to build those images.
 
 see <https://github.com/mtitinger/acme-manifests/blob/master/README.md>
 
+## LAVA-CI ##
+
+lava-ci python needs to be in the path.
+
