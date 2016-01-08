@@ -1,8 +1,6 @@
 .repo
 *.o
 *.pyc
-SRC/beaglebone-black/kbuild
-fs-overlay/etc/lava-dispatcher/devices/*.conf
 images/*.img
 images/*.tgz
 *~
