@@ -1,7 +1,0 @@
-#!/bin/bash
-TARGETS=beaglebone-black panda-es
-#TAG=next/next-20151202/
-TAG=mainline/v4.4-rc8/
-
-lava-kernel-ci-job-creator.py --section baylibre http://storage.kernelci.org/$TAG --plans boot --targets beaglebone-black panda-es  --arch arm
-
