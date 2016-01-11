@@ -5,7 +5,7 @@ export LAVA_USER=powerci
 export BUNDLE_STREAM=/anonymous/powerci
 export LAVA_TOKEN=bm6p0a2q9w0sytib04bjacx0dlcdhnfo10qni24np8j5sk2tfxxqf65hygcpq13mzhaprf03dciec55ykpn0yr55k900i81ix0i5005y9fgk34x7j1eaq5k3pb6t2gdt
 
-TAG=mainline/v4.4-rc3
+TAG=mainline/v4.4-rc5
 
 RESULTS=lab-baylibre-$(subst /,_,$(TAG)).json
 
@@ -55,11 +55,11 @@ runner:	${LAVA_JOBS}
 	cd scripts/lava-ci && ./lava-job-runner.py  --section baylibre  --poll $(RESULTS)
 
 powerci:
-	cd scripts/lava-ci && ./lava-report.py --boot $(RESULTS) --lab lab-baylibre --token ${POWERCI_TOKEN} --api ${POWERCI_API}
+	cd scripts/lava-ci && ./lava-report.py --boot results/$(RESULTS) --lab lab-baylibre --token ${POWERCI_TOKEN} --api ${POWERCI_API}
 
 
 kernelci: scripts/lava-ci/$(RESULTS)
-	cd scripts/lava-ci && ./lava-report.py --boot $(RESULTS) --lab lab-baylibre --token ${KERNELCI_TOKEN} --api ${KERNELCI_API}
+	cd scripts/lava-ci && ./lava-report.py --boot results/$(RESULTS) --lab lab-baylibre --token ${KERNELCI_TOKEN} --api ${KERNELCI_API}
 
 	
 clean:
