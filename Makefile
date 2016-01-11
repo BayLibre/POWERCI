@@ -11,10 +11,10 @@ RESULTS=lab-baylibre-$(subst /,_,$(TAG)).json
 
 export LAVA_SERVER_IP=lava.baylibre.com
 export LAVA_SERVER=http://lava.baylibre.com:10080/RPC2/
-export LAVA_JOBS=/home/powerci/POWERCI/jobs-$(subst /,_,$(TAG))
 
-#LAB_BAYLIBRE_TARGETS=beaglebone-black panda-es jetson-tk1
-LAB_BAYLIBRE_TARGETS=beaglebone-black panda-es
+export LAVA_JOBS?=/home/powerci/POWERCI/jobs-$(subst /,_,$(TAG))
+
+LAB_BAYLIBRE_TARGETS=beaglebone-black panda-es jetson-tk1
 
 POWERCI_TOKEN=3caf9787-2521-4276-ad2e-af2c64d19707
 POWERCI_API=http://powerci.org:8888
@@ -41,33 +41,41 @@ help: $(HOME)/.lavarc
 	@echo "		fix-jobs	hack json files to use directly with lava-tool"
 	@echo
 
+
+## CREATE JOBS
+#
 jobs: ${LAVA_JOBS} $(HOME)/.lavarc
 
 ${LAVA_JOBS}:
 	cd scripts/lava-ci && ./lava-kernel-ci-job-creator.py --section baylibre http://storage.kernelci.org/$(TAG) \
-	--plans boot \
+ 	--plans boot \
 	--targets $(LAB_BAYLIBRE_TARGETS) \
 	--arch arm
+
+scripts/lava-ci/$(RESULTS): runner
+	-@mkdir -p archive
+	-@cp -rf scripts/lava-ci/$(RESULTS) archive
+	-@cp -f $(LAVA_JOBS) archive/$(RESULTS)
 
 runner:	${LAVA_JOBS}
 	cd scripts/lava-ci && ./lava-job-runner.py  --section baylibre  --poll $(RESULTS)
 
+## SUBMIT
+#
 powerci:
 	cd scripts/lava-ci && ./lava-report.py --boot results/$(RESULTS) --lab lab-baylibre --token ${POWERCI_TOKEN} --api ${POWERCI_API}
-
 
 kernelci: scripts/lava-ci/$(RESULTS)
 	cd scripts/lava-ci && ./lava-report.py --boot results/$(RESULTS) --lab lab-baylibre --token ${KERNELCI_TOKEN} --api ${KERNELCI_API}
 
-
+## CLEANUP
+#
 clean:
-	-@mkdir -p archive
-	-@mv scripts/lava-ci/$(RESULTS) archive
-	-@mv $(LAVA_JOBS) archive/$(RESULTS)
+	-@rm -rf jobs $(LAVA_JOBS)
+	-@rm -rf jetson
 
-scripts/lava-ci/$(RESULTS): runner
-
-
+## SETUP
+#
 $(HOME)/.lavarc:
 	@echo "[baylibre]" > $@
 	@echo "server: "$(LAVA_SERVER) >> $@
@@ -77,7 +85,7 @@ $(HOME)/.lavarc:
 	@echo "jobs:" >> $@
 
 ## LAVA ADMINISTRATION SECTION, setting up the user ##
-
+#
 auth:
 	echo $(LAVA_TOKEN) >  scripts/.$(LAVA_USER).tok
 	lava-tool auth-add --token-file  scripts/.$(LAVA_USER).tok $(LAVA_SERVER)
@@ -97,3 +105,9 @@ fix-jobs:
 	@find $(LAVA_JOBS) -name *.json | xargs sed 's#LAVA_RPC_LOGIN#'"$LAVA_RPC_LOGIN"'#' -in-place=.fixed.json
 	mv $(LAVA_JOBS)/*.fixed.json fixed-jobs
 
+
+## LAB DEBUG ##
+#
+jetson:
+	cd scripts/lava-ci && LAVA_JOBS=$(shell pwd)/jetson ./lava-kernel-ci-job-creator.py --section baylibre http://storage.kernelci.org/$(TAG) \
+	--plans boot --targets jetson-tk1 --arch arm
