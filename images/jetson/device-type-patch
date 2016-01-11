@@ -1,0 +1,11 @@
+You may have to change the following attributes in the config files
+
+bootloader_prompt = Jetson TK1
+
+to 
+
+bootloader_prompt = Tegra124 (Jetson TK1)
+
+Auto power-n when power is enabled: see https://devtalk.nvidia.com/default/topic/787172/jetson-tk1/power-on-issues-with-jetson-tk1/
+
+
