@@ -29,6 +29,15 @@ LAVA Setup & test tasks:
 
 We are now using lava-ci to create json jobs, run them with lava, and submit the results to kernelci and/or powerci
 
-see "make help"
+see "make help", again you may have to tune the Makefile depending on the kernel tag to test.
+
+```
+LAVACI / PowerCI tasks:
+		jobs		create jobs json files, based on selected kernel tag
+		runner		invoke lava-ci runner with jobs repo
+		powerci		push last results to powerci.org
+		kernelci	push last results to kernelci.org
+		clean		remove jobs and results
+```
 
 

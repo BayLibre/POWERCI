@@ -23,7 +23,7 @@ KERNELCI_TOKEN=bb4d438a-f412-4c65-9f7c-9daefd253ee7
 KERNELCI_API=http://api.kernelci.org
 
 help: $(HOME)/.lavarc
-	clear
+	@clear
 	@echo
 	@echo "LAVACI / PowerCI tasks:"
 	@echo "		jobs		create jobs json files, based on selected kernel tag"
