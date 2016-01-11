@@ -78,17 +78,30 @@ partitions, then the "client_type" parameter can be set to "master"
 
 When partition labels are needed, for instance to flash a testboot and testrootfs partition when client_type=bootloader, an offset is added to the existing partitions 
 
-### board flash images ###
-
-In order to prevent a chicken vs egg situation upon running the "linaro-image-deploy" dispatcher action,
-the initial flash content of the board (DUT) must have the expected partion labels already. 
-
-the following partitions need being created on the flash:
-
-- mmc 0:3 vfat partition testboot
-- mmc 0:4 ext4 partition testrootfs
-
 ### TFTP support requirement ###
 
 Check that your /etc/default/tftpd-hpa file references /var/lib/lava/dispatcher/tmp, or sudo cp /usr/share/lava-dispatcher/tftpd-hpa /etc/default/tftpd-hpa
+
+### Boards setup ###
+
+## ACME (power switch) ##
+
+See ACME repo: https://github.com/BayLibre/ACME
+
+## BeagleBone-Black ##
+
+Create an sdcard from linaro master images
+
+## Panda es ##
+
+create a new SDCard with a recent u-boot, so that command 'bootz' is avail.
+Change the prompt in the device-types/panda-es.json accordingly
+
+For instance:
+bootloader_prompt= =>
+
+## Jteson-TK1 ##
+
+Adding u-boot instead of the prop BL from out-of-the-box: 
+see https://github.com/NVIDIA/tegra-uboot-flasher-scripts/blob/master/README-developer.txt
 
