@@ -105,3 +105,7 @@ bootloader_prompt= =>
 Adding u-boot instead of the prop BL from out-of-the-box: 
 see https://github.com/NVIDIA/tegra-uboot-flasher-scripts/blob/master/README-developer.txt
 
+console trouble: ser2net seems to disconnect after boot, to prevent this issue, the
+device config file may use the following alternative command:
+
+`connection_command = sg dialout "cu -l /dev/ttyUSB2 -s 115200"`
