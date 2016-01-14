@@ -108,6 +108,11 @@ fix-jobs:
 
 ## LAB DEBUG ##
 #
+### Post one job for debug
+#
+post:
+	lava-tool submit-job $(LAVA_SERVER) $(MYJOB)
+
 jetson:
 	cd scripts/lava-ci && LAVA_JOBS=$(shell pwd)/jetson ./lava-kernel-ci-job-creator.py --section baylibre http://storage.kernelci.org/$(TAG) \
 	--plans boot --targets jetson-tk1 --arch arm
