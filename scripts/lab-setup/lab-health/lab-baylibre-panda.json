@@ -1,5 +1,6 @@
 {
     "timeout": 900,
+    "device_type": "panda-es",
     "job_name": "panda-health",
     "logging_level": "DEBUG",
     "actions": [

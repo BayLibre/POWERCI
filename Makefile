@@ -111,7 +111,7 @@ fix-jobs:
 ### Post one job for debug
 #
 post:
-	lava-tool submit-job $(LAVA_SERVER) $(MYJOB)
+	lava-tool submit-job http://powerci@lava.baylibre.com:10080/RPC2/ $(MYJOB)
 
 jetson:
 	cd scripts/lava-ci && LAVA_JOBS=$(shell pwd)/jetson ./lava-kernel-ci-job-creator.py --section baylibre http://storage.kernelci.org/$(TAG) \
