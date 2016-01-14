@@ -9,7 +9,8 @@
 > The machine name shall be lava-baylibre
 
 Note that you will need to use the same port locally and remotely, for the apache virtualhost, for instance
-10080
+10080. Also file /etc/lava-server/lava-dispatcher.conf will need to be changed, so that LAVA_IMAGE_URL contains the port number,
+otherwise some test stances will default to port 80 and fail.
 
 
 ## preliminary packages and services installation ##
