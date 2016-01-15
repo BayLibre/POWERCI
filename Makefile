@@ -39,6 +39,7 @@ help: $(HOME)/.lavarc
 	@echo "		auth		register user token with keyring (do once)"
 	@echo "		stream		create /anonymous/LAVA_USER/ bundle stream (do once)"
 	@echo "		fix-jobs	hack json files to use directly with lava-tool"
+	@echo "		iio		build and install IIO power capture tools"
 	@echo
 
 
@@ -105,6 +106,14 @@ fix-jobs:
 	@find $(LAVA_JOBS) -name *.json | xargs sed 's#LAVA_RPC_LOGIN#'"$LAVA_RPC_LOGIN"'#' -in-place=.fixed.json
 	mv $(LAVA_JOBS)/*.fixed.json fixed-jobs
 
+iio:
+	# build libiio
+	@echo "Cmake may require a whole bunch of stuff:"
+	@echo "sudo apt-get install libxml2-dev doxygen bison flex"
+	cd SRC/libiio && cmake .
+	make -C SRC/libiio
+	sudo make -C SRC/libiio install
+	# build capture and pos-processing app
 
 ## LAB DEBUG ##
 #
