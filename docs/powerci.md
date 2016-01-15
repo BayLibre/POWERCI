@@ -11,6 +11,8 @@ is subject to change, or even be wrong...
 * Not all labs are LAVA
 * PowerCI does not keep the complete ganularity of a "boot" session, meaning that unit-tests are not kept. COnsequently, it is LAVA that will allow for this sort of granularity.
 
+The README section related to Lava-baylibre creation are now located [here](doc/lava-baylibre-setup.md)
+
 ## "Power Metrics" tab in the frontend
 
 PowerCI adds a "[Power Metrics]" tab  <http://www.powerci.org/power/>
@@ -157,6 +159,7 @@ We will try make use of the LAVA test shell as per <http://lava-baylibre.local:1
 
 ### Dispatcher Action Start Recording ####
 
+```
 {
     "command": "lava_test_shell",
     "parameters": {
@@ -169,9 +172,11 @@ We will try make use of the LAVA test shell as per <http://lava-baylibre.local:1
         "timeout": 1800
      }
 },
+```
 
 ### Dispatcher Action Stop Recording ####
 
+```
 {
     "command": "lava_test_shell",
     "parameters": {
@@ -184,6 +189,7 @@ We will try make use of the LAVA test shell as per <http://lava-baylibre.local:1
         "timeout": 1800
      }
 },
+```
 
 ### Power Metrics Processsing App ###
 
