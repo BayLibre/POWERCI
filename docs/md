@@ -1,0 +1,10 @@
+#!/bin/bash
+
+if [ -z "$1" ]
+then
+	echo "usage: $0 MARKDOWNFILE"
+	echo "will display a console based web version of the md file"
+	exit 2
+fi
+
+pandoc  $1 | lynx -stdin

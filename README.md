@@ -1,1 +1,1 @@
-docs/setup.md
+docs/main.md

@@ -135,3 +135,10 @@ see <https://wiki.debian.org/LAVA>
 
  See [user-jobs.md](docs/user-jobs.md)
 
+# PowerCI, power metrics #
+
+This section is about the implementation of POWERCI, specifically
+how the power metrics are acquired and reported.
+
+See [powerci.md](docs/powerci.md)
+
