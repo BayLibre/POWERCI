@@ -11,7 +11,7 @@ is subject to change, or even be wrong...
 * Not all labs are LAVA
 * PowerCI does not keep the complete ganularity of a "boot" session, meaning that unit-tests are not kept. COnsequently, it is LAVA that will allow for this sort of granularity.
 
-The README section related to Lava-baylibre creation are now located [here](lava-baylibre-setup.md)
+**The README section related to Lava-baylibre creation are now located [here](lava-baylibre-setup.md)**
 
 ## "Power Metrics" tab in the frontend
 
@@ -193,7 +193,7 @@ We will try make use of the LAVA test shell as per <http://lava-baylibre.local:1
 
 ### Power Metrics Processsing App ###
 
-FIXME: seek or write an app that takes a binary IIO stream, plus the xml
+**FIXME**: seek or write an app that takes a binary IIO stream, plus the xml
 that describes the IIO channels, and computes:
 - min/max/average
 - integration-over-time based on sampling rate.
