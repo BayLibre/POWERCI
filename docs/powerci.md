@@ -151,4 +151,46 @@ example:
 
 ```
 
+## LAVA Power recording shell hooks ##
+
+We will try make use of the LAVA test shell as per <http://lava-baylibre.local:10080/static/docs/external_measurement.html>
+
+### Dispatcher Action Start Recording ####
+
+{
+    "command": "lava_test_shell",
+    "parameters": {
+	"testdef_repos": [
+	    {
+		"git-repo": "https://github.com/BayLibre/lava-test-definitions.git",
+		"testdef": "power/capture-start.yaml"
+	    }
+	],
+        "timeout": 1800
+     }
+},
+
+### Dispatcher Action Stop Recording ####
+
+{
+    "command": "lava_test_shell",
+    "parameters": {
+        "testdef_repos": [
+            {
+                "git-repo": "https://github.com/BayLibre/lava-test-definitions.git",
+                "testdef": "power/capture-stop.yaml"
+            }
+        ],
+        "timeout": 1800
+     }
+},
+
+### Power Metrics Processsing App ###
+
+FIXME: seek or write an app that takes a binary IIO stream, plus the xml
+that describes the IIO channels, and computes:
+- min/max/average
+- integration-over-time based on sampling rate.
+
+
 
