@@ -1,4 +1,4 @@
-# POWERCI Power metrics reporting #
+# POWERCI Power Metrics Reporting #
 
 This section is Work In Progress, some of the stuff herein
 is subject to change, or even be wrong...
@@ -11,7 +11,7 @@ is subject to change, or even be wrong...
 * Not all labs are LAVA
 * PowerCI does not keep the complete ganularity of a "boot" session, meaning that unit-tests are not kept. COnsequently, it is LAVA that will allow for this sort of granularity.
 
-The README section related to Lava-baylibre creation are now located [here](doc/lava-baylibre-setup.md)
+The README section related to Lava-baylibre creation are now located [here](lava-baylibre-setup.md)
 
 ## "Power Metrics" tab in the frontend
 

@@ -125,7 +125,7 @@ see <https://wiki.debian.org/LAVA>
  
  This dispatcher may be on a different machine, physically connected to the boards.
 
- See [setup-lab.md](docs/setup-lab.md)
+ See [setup-lab.md](setup-lab.md)
 
 # Posting Jobs, using LAVA #
 
@@ -133,12 +133,12 @@ see <https://wiki.debian.org/LAVA>
 
  This requires the dispatcher to be setup, and will describe what to do as a user.
 
- See [user-jobs.md](docs/user-jobs.md)
+ See [user-jobs.md](user-jobs.md)
 
 # PowerCI, power metrics #
 
 This section is about the implementation of POWERCI, specifically
 how the power metrics are acquired and reported.
 
-See [powerci.md](docs/powerci.md)
+See [powerci.md](powerci.md)
 
