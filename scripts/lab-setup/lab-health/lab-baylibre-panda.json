@@ -25,8 +25,8 @@
                             "setenv loadkernel 'tftp ${kernel_addr_r} {KERNEL}'",
                             "setenv loadinitrd 'tftp ${initrd_addr_r} {RAMDISK}; setenv initrd_size ${filesize}'",
                             "setenv loadfdt 'tftp ${fdt_addr_r} {DTB}'",
-                            "setenv bootargs 'console=ttyO0,115200n8 root=/dev/ram0 ip=:::::eth0:dhcp'",
-                            "setenv bootcmd 'dhcp; setenv serverip 192.168.1.4; run loadkernel; run loadinitrd; run loadfdt; bootz ${kernel_addr_r} ${initrd_addr_r} ${fdt_addr_r}'",
+                            "setenv bootargs 'console=ttyO2,115200n8 root=/dev/nfs rw nfsroot={SERVER_IP}:{NFSROOTFS},tcp,hard,intr ip=dhcp fixrtc nocompcache vram=48M omapfb.vram=0:24M mem=456M@0x80000000 mem=512M@0xA0000000 init=init'",
+                            "setenv bootcmd 'usb start; dhcp; setenv serverip 192.168.1.4; run loadkernel; run loadinitrd; run loadfdt; bootz ${kernel_addr_r} ${initrd_addr_r} ${fdt_addr_r}'",
                             "boot"]
           }
         },

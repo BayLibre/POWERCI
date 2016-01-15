@@ -28,7 +28,7 @@ The job status must be "passed", and the job must have some power metrics.
 * col7 : Voltage Max (Volt)
 * col8 : Current Max (Ampere)
 
-## API Payload changes ##
+## KernelCI API Payload changes ##
 
 ### Original Payload ###
 
@@ -82,7 +82,7 @@ yield the url of the dashboard entry for the bundle:
 
 result-bundle is an extraction of the url above.
 
-### Bundle JSON as a result of LAVA API get ###
+### Result of LAVA API get (bundle json)###
 
 example:
 ```
@@ -94,104 +94,7 @@ example:
             "tags": [],
             "analyzer_assigned_date": "2016-01-14T17:21:40Z",
             "test_results": [
-                {
-                    "units": "",
-                    "message": "",
-                    "test_case_id": "deploy_linaro_kernel",
-                    "result": "pass",
-                    "measurement": ""
-                },
-                {
-                    "units": "",
-                    "message": "",
-                    "test_case_id": "connect_to_console",
-                    "result": "pass",
-                    "measurement": ""
-                },
-                {
-                    "units": "seconds",
-                    "message": "",
-                    "test_case_id": "enter_bootloader",
-                    "result": "pass",
-                    "measurement": "2.04"
-                },
-                {
-                    "units": "",
-                    "message": "",
-                    "test_case_id": "execute_boot_cmds",
-                    "result": "pass",
-                    "measurement": ""
-                },
-                {
-                    "units": "seconds",
-                    "message": "",
-                    "test_case_id": "boot_cmds_execution_time",
-                    "result": "pass",
-                    "measurement": "1.33"
-                },
-                {
-                    "units": "",
-                    "message": "Kernel Error: did not start booting.",
-                    "test_case_id": "wait_for_image_boot_msg",
-                    "result": "fail",
-                    "measurement": ""
-                },
-                {
-                    "units": "",
-                    "message": "",
-                    "test_case_id": "connect_to_console",
-                    "result": "pass",
-                    "measurement": ""
-                },
-                {
-                    "units": "seconds",
-                    "message": "",
-                    "test_case_id": "enter_bootloader",
-                    "result": "pass",
-                    "measurement": "1.96"
-                },
-                {
-                    "units": "",
-                    "message": "",
-                    "test_case_id": "execute_boot_cmds",
-                    "result": "pass",
-                    "measurement": ""
-                },
-                {
-                    "units": "seconds",
-                    "message": "",
-                    "test_case_id": "boot_cmds_execution_time",
-                    "result": "pass",
-                    "measurement": "1.34"
-                },
-                {
-                    "units": "",
-                    "message": "Kernel Error: did not start booting.",
-                    "test_case_id": "wait_for_image_boot_msg",
-                    "result": "fail",
-                    "measurement": ""
-                },
-                {
-                    "units": "",
-                    "message": "",
-                    "test_case_id": "connect_to_console",
-                    "result": "pass",
-                    "measurement": ""
-                },
-                {
-                    "units": "seconds",
-                    "message": "",
-                    "test_case_id": "enter_bootloader",
-                    "result": "pass",
-                    "measurement": "1.89"
-                },
-                {
-                    "units": "",
-                    "message": "",
-                    "test_case_id": "execute_boot_cmds",
-                    "result": "pass",
-                    "measurement": ""
-                },
+... snip ...
                 {
                     "units": "seconds",
                     "message": "",
