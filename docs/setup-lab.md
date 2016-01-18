@@ -10,7 +10,7 @@ As per <http://127.0.1.1/static/docs/known-devices.html>
   * the pdudaemon port ditto (option -p)
   * option -b will create the lab health bundle /anonymous/lab-health
 
-## Baylibre PowerCI Lab setup script ##
+### Baylibre PowerCI Lab setup script ##
 
 run the script located under:
 
@@ -30,6 +30,11 @@ remember restarting those services
 	sudo service lava-server restart
 	sudo service apache2 restart
 ```
+
+### Healthcheck jobs ###
+
+* Healthcheck jobs are located in the test-definitions sub git pulled from <https://github.com/baylibre/lava-test-definitions>
+* Those tests can be added fro the device-type admin django page.
 
 ## Setting up the boot process ##
 
