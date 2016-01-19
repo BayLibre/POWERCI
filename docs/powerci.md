@@ -56,13 +56,16 @@ The job status must be "passed", and the job must have some power metrics.
 
 These fields must be optionnal, since not all labs will support them.
 
+The fileds are as per the output of iio-capture, see <https://github.com/BayLibre/iio-capture>
+
 ```
-        "energy": "1234",
-        "power_avg": "4567",
-        "power_max": "8910",
-        "power_min": "1011",
-        "voltage_max": "1213",
-        "current_max": "1415",
+	"voltage_max":	 "5110.00",
+	"power_max":	 "2525.00",
+	"power_avg":	 "1988.35",
+	"power_min":	 "1925.00",
+	"energy":	 "714.41",
+	"current_max":	 "492.00",
+	"current_min":	 "378.00",
 ```
 
 
@@ -193,10 +196,5 @@ We will try make use of the LAVA test shell as per <http://lava-baylibre.local:1
 
 ### Power Metrics Processsing App ###
 
-**FIXME**: seek or write an app that takes a binary IIO stream, plus the xml
-that describes the IIO channels, and computes:
-- min/max/average
-- integration-over-time based on sampling rate.
-
-
+See <https://github.com/BayLibre/iio-capture>
 
