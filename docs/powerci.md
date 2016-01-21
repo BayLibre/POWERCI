@@ -52,6 +52,24 @@ The job status must be "passed", and the job must have some power metrics.
     }
 ```
 
+those fields match the optional parameters of the lava job JSON: 
+
+```
+        {
+            "command": "deploy_linaro_kernel",
+            "metadata": {
+                "image.type": "kernel-ci",
+                "image.url": "http://storage.kernelci.org/mainline/v4.4-rc5/arm-omap2plus_defconfig/",
+                "kernel.tree": "mainline",
+                "kernel.version": "v4.4-rc5",
+                "device.tree": "am335x-boneblack.dtb",
+                "kernel.endian": "little",
+                "kernel.defconfig": "arm-omap2plus_defconfig",
+                "platform.fastboot": "false",
+                "test.plan": "boot"
+            },
+```
+
 ### Optional fields additions ###
 
 These fields must be optionnal, since not all labs will support them.
@@ -156,43 +174,25 @@ example:
 
 ```
 
-## LAVA Power recording shell hooks ##
+
+## LAVA Power recording hooks ##
 
 We will try make use of the LAVA test shell as per <http://lava-baylibre.local:10080/static/docs/external_measurement.html>
 
-### Dispatcher Action Start Recording ####
+Edit: not using the shell hooks for now, see discussion on Basecamp.
+
+Instead, I am adding host_hook when entering/exitting lava_command_run.
+The hooks are defined in either device.conf file, and in our case,
+will call iio-capture tool.
+
+The iio-capture tool will issue a PN_INFO line in the job log:
 
 ```
-{
-    "command": "lava_test_shell",
-    "parameters": {
-	"testdef_repos": [
-	    {
-		"git-repo": "https://github.com/BayLibre/lava-test-definitions.git",
-		"testdef": "power/capture-start.yaml"
-	    }
-	],
-        "timeout": 1800
-     }
-},
-```
-
-### Dispatcher Action Stop Recording ####
+02:46:40 PM DEBUG: Executing on host : '['sh', '-c', u'iio-probe-stop 0']'
+02:46:42 PM INFO: vmax=5187.50 pmax=1225.00 pavg=1113.38 pmin=1075.00 energy=75.17 cmax=234.00 cmin=207.00
 
 ```
-{
-    "command": "lava_test_shell",
-    "parameters": {
-        "testdef_repos": [
-            {
-                "git-repo": "https://github.com/BayLibre/lava-test-definitions.git",
-                "testdef": "power/capture-stop.yaml"
-            }
-        ],
-        "timeout": 1800
-     }
-},
-```
+This line yields the power metrics, and can be parsed by lava-report.py into the JSON payload for the POST command towards PowerCI API.
 
 ### Power Metrics Processsing App ###
 

@@ -14,7 +14,8 @@ export LAVA_SERVER=http://lava.baylibre.com:10080/RPC2/
 
 export LAVA_JOBS?=/home/powerci/POWERCI/jobs-$(subst /,_,$(TAG))
 
-LAB_BAYLIBRE_TARGETS=beaglebone-black panda-es jetson-tk1
+#LAB_BAYLIBRE_TARGETS=beaglebone-black panda-es jetson-tk1
+LAB_BAYLIBRE_TARGETS=beaglebone-black panda-es
 
 POWERCI_TOKEN=3caf9787-2521-4276-ad2e-af2c64d19707
 POWERCI_API=http://powerci.org:8888
@@ -63,8 +64,15 @@ runner:	${LAVA_JOBS}
 
 ## SUBMIT
 #
-powerci:
+powerci: scripts/lava-ci/$(RESULTS)
 	cd scripts/lava-ci && ./lava-report.py --boot results/$(RESULTS) --lab lab-baylibre --token ${POWERCI_TOKEN} --api ${POWERCI_API}
+
+## Trials with KCI API changes for power stats
+test:
+	rm -rf scripts/lava-ci/results
+	cp -rf scripts/results_TEST scripts/lava-ci/results
+	cd scripts/lava-ci && ./lava-report-marc.py --boot results/lab-baylibre-mainline_v4.4-rc5.json --lab lab-baylibre --token ${POWERCI_TOKEN} --api http://powerci.org:8888
+
 
 kernelci: scripts/lava-ci/$(RESULTS)
 	cd scripts/lava-ci && ./lava-report.py --boot results/$(RESULTS) --lab lab-baylibre --token ${KERNELCI_TOKEN} --api ${KERNELCI_API}
