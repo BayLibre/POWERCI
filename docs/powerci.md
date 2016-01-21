@@ -19,7 +19,7 @@ PowerCI adds a "[Power Metrics]" tab  <http://www.powerci.org/power/>
 
 * each line is a job, like in the [boots] tab <http://www.kernelci.org/boot/>
 
-The job status must be "passed", and the job must have some power metrics. 
+The job status must be "passed", and the job must have some power metrics.
 
 * col1 : a summary "Description and ID" links back to the matching line in [Boots]
 * col2 : date
@@ -59,13 +59,13 @@ These fields must be optionnal, since not all labs will support them.
 The fileds are as per the output of iio-capture, see <https://github.com/BayLibre/iio-capture>
 
 ```
-	"voltage_max":	 "5110.00",
-	"power_max":	 "2525.00",
-	"power_avg":	 "1988.35",
-	"power_min":	 "1925.00",
-	"energy":	 "714.41",
-	"current_max":	 "492.00",
-	"current_min":	 "378.00",
+	"voltage_max":	 5110.00,
+	"power_max":	 2525.00,
+	"power_avg":	 1988.35,
+	"power_min":	 1925.00,
+	"energy":	 714.41,
+	"current_max":	 492.00,
+	"current_min":	 378.00,
 ```
 
 
