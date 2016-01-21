@@ -5,7 +5,7 @@ export LAVA_USER=powerci
 export BUNDLE_STREAM=/anonymous/powerci
 export LAVA_TOKEN=bm6p0a2q9w0sytib04bjacx0dlcdhnfo10qni24np8j5sk2tfxxqf65hygcpq13mzhaprf03dciec55ykpn0yr55k900i81ix0i5005y9fgk34x7j1eaq5k3pb6t2gdt
 
-TAG=mainline/v4.4-rc5
+TAG=mainline/v4.4-rc8
 
 RESULTS=lab-baylibre-$(subst /,_,$(TAG)).json
 
@@ -19,9 +19,11 @@ LAB_BAYLIBRE_TARGETS=beaglebone-black panda-es
 
 POWERCI_TOKEN=3caf9787-2521-4276-ad2e-af2c64d19707
 POWERCI_API=http://powerci.org:8888
+POWERCI_PLAN=power
 
 KERNELCI_TOKEN=bb4d438a-f412-4c65-9f7c-9daefd253ee7
 KERNELCI_API=http://api.kernelci.org
+KERNELCI_PLAN=boot
 
 help: $(HOME)/.lavarc
 	@clear
@@ -50,7 +52,7 @@ jobs: ${LAVA_JOBS} $(HOME)/.lavarc
 
 ${LAVA_JOBS}:
 	cd scripts/lava-ci && ./lava-kernel-ci-job-creator.py --section baylibre http://storage.kernelci.org/$(TAG) \
- 	--plans boot \
+ 	--plans $(POWERCI_PLAN) \
 	--targets $(LAB_BAYLIBRE_TARGETS) \
 	--arch arm
 
@@ -64,7 +66,7 @@ runner:	${LAVA_JOBS}
 
 ## SUBMIT
 #
-powerci: scripts/lava-ci/$(RESULTS)
+powerci: 
 	cd scripts/lava-ci && ./lava-report.py --boot results/$(RESULTS) --lab lab-baylibre --token ${POWERCI_TOKEN} --api ${POWERCI_API}
 
 ## Trials with KCI API changes for power stats
