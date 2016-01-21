@@ -1,7 +1,31 @@
 # POWERCI Power Metrics Reporting #
 
-This section is Work In Progress, some of the stuff herein
-is subject to change, or even be wrong...
+This repo contains:
+
+- the lava-ci integration to interact with baylibre LAVA instance and KERNELCI or POWERCI
+- the setup sources (fs-overlay), scripts and documentation to re-create the baylibre LAVA instance from scratch
+
+This is meant to being deployed on lava.baylibre.com for the LAVA part and powerci.org for the lava-ci part.
+
+this is meant to be pulled to /home/powerci, and operated mainly by user powerci.
+
+## Repo init ##
+
+` mkdir -p /home/powerci/POWERCI && cd POWERCI`
+
+` repo init -u git@github.com:mtitinger/powerci-manifests.git`
+
+` repo sync`
+
+## Getting started ##
+
+
+* Edit Makefile, to specify the kernel tag of interest, currently it is picked for the kernelci storage
+* make jobs
+* make runner
+* make powerci
+
+done. 
 
 ## Introduction and principle ##
 
@@ -11,7 +35,7 @@ is subject to change, or even be wrong...
 * Not all labs are LAVA
 * PowerCI does not keep the complete ganularity of a "boot" session, meaning that unit-tests are not kept. COnsequently, it is LAVA that will allow for this sort of granularity.
 
-**The README section related to Lava-baylibre creation are now located [here](lava-baylibre-setup.md)**
+**The README section related to Lava-baylibre creation are now located [here](docs/lava-baylibre-setup.md)**
 
 ## "Power Metrics" tab in the frontend
 
@@ -86,102 +110,9 @@ The fileds are as per the output of iio-capture, see <https://github.com/BayLibr
 	"current_min":	 378.00,
 ```
 
-
-## Reminder on Lava job results ##
-
-### Job results on disk ###
-
-Some hints about how job results are stored on disk by the dispatcher
-
-example in /var/lib/lava-server/default/media/job-output/job-165:
-
-* output.txt
-* result-bundle
-
-output.txt is the raw console output of the job execution. The last line will
-yield the url of the dashboard entry for the bundle:
-
-> Dashboard : http://lava.baylibre.com:10080/dashboard/permalink/bundle/15cd1a9864f256bc4096a97703d6be5cae36dc51/
-
-result-bundle is an extraction of the url above.
-
-### Result of LAVA API get (bundle json)###
-
-example:
-```
-{
-    "test_runs": [
-        {
-            "test_id": "lava",
-            "attachments": [],
-            "tags": [],
-            "analyzer_assigned_date": "2016-01-14T17:21:40Z",
-            "test_results": [
-... snip ...
-                {
-                    "units": "seconds",
-                    "message": "",
-                    "test_case_id": "boot_cmds_execution_time",
-                    "result": "pass",
-                    "measurement": "1.34"
-                },
-                {
-                    "units": "",
-                    "message": "Kernel Error: did not start booting.",
-                    "test_case_id": "wait_for_image_boot_msg",
-                    "result": "fail",
-                    "measurement": ""
-                },
-                {
-                    "units": "",
-                    "message": "Lava failed at action boot_linaro_image with error:Failed to boot test image.\nTraceback (most recent call last):\n  File \"/usr/lib/python2.7/dist-packages/lava_dispatcher/job.py\", line 381, in run\n    action.run(**params)\n  File \"/usr/lib/python2.7/dist-packages/lava_dispatcher/actions/boot_control.py\", line 156, in run\n    raise CriticalError(\"Failed to boot test image.\")\nCriticalError: Failed to boot test image.\n",
-                    "test_case_id": "boot_linaro_image",
-                    "result": "fail",
-                    "measurement": ""
-                },
-                {
-                    "units": "",
-                    "message": "",
-                    "test_case_id": "gather_results",
-                    "result": "pass",
-                    "measurement": ""
-                },
-                {
-                    "units": "",
-                    "message": "",
-                    "test_case_id": "job_complete",
-                    "result": "fail",
-                    "measurement": ""
-                }
-            ],
-            "analyzer_assigned_uuid": "466e5444-bae3-11e5-ae7a-3ca82a9f2df0",
-            "attributes": {
-                "target.hostname": "dut1-panda-es",
-                "target": "dut1-panda-es",
-                "boot_retries": "2",
-                "target.device_version": "error",
-                "initrd-addr": "0x81600000",
-                "kernel-addr": "0x80200000",
-                "dtb-addr": "0x815f0000",
-                "kernel-image": "uImage",
-                "logging_level": "DEBUG"
-            },
-            "time_check_performed": false
-        }
-    ],
-    "format": "Dashboard Bundle Format 1.7.1"
-}
-
-```
-
-
 ## LAVA Power recording hooks ##
 
-We will try make use of the LAVA test shell as per <http://lava-baylibre.local:10080/static/docs/external_measurement.html>
-
-Edit: not using the shell hooks for now, see discussion on Basecamp.
-
-Instead, I am adding host_hook when entering/exitting lava_command_run.
+I am adding host_hook when entering/exitting lava_command_run.
 The hooks are defined in either device.conf file, and in our case,
 will call iio-capture tool.
 
@@ -196,5 +127,27 @@ This line yields the power metrics, and can be parsed by lava-report.py into the
 
 ### Power Metrics Processsing App ###
 
+The power metrics are created by calling the scripts in SRC/iio-capture:
+
+* iio-probe-start [probe number]
+* iio-probe-stop [probe number]
+
 See <https://github.com/BayLibre/iio-capture>
 
+the scripts and capture app uses the IIO connectivity with baylibre-acme.
+
+see <https://github.com/BayLibre/ACME> and related wikis and READMEs for more info.
+
+
+## LAVA_CI Test plan 'POWER' ##
+
+I've added a template for a new test plan called power, based on the boot tests plan.
+It will add a basic "lava_command_run" dispatcher action to create power measurements.
+
+In future developments, it is advised to create specific lava_commands that will stimulate the power comsumption, for exempale:
+
+* a video decod
+* audio play/record
+* suspend/resume cycle on pm_test mode.
+
+See <https://github.com/BayLibre/lava-ci>
