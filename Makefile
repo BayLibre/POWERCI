@@ -28,7 +28,7 @@ KERNELCI_PLAN=boot
 help: $(HOME)/.lavarc
 	@clear
 	@echo
-	@echo "LAVACI / PowerCI tasks:"
+	@echo "== LAVACI / PowerCI FLOW =="
 	@echo "		jobs		create jobs json files, based on selected kernel tag"
 	@echo "		runner		invoke lava-ci runner with jobs repo"
 	@echo "		powerci		push last results to powerci.org"
@@ -38,7 +38,7 @@ help: $(HOME)/.lavarc
 	@echo "Current LAVA config:"
 	@cat -n ~/.lavarc
 	@echo
-	@echo "LAVA Setup & test tasks:"
+	@echo "== LAVA Setup & test FLOW =="
 	@echo "		auth		register user token with keyring (do once)"
 	@echo "		stream		create /anonymous/LAVA_USER/ bundle stream (do once)"
 	@echo "		fix-jobs	hack json files to use directly with lava-tool"
