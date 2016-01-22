@@ -108,6 +108,7 @@ The fileds are as per the output of iio-capture, see <https://github.com/BayLibr
 	"energy":	 714.41,
 	"current_max":	 492.00,
 	"current_min":	 378.00,
+	"has_power":	 1
 ```
 
 ## LAVA Power recording hooks ##
