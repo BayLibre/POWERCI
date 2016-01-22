@@ -12,6 +12,7 @@ sudo ./add_baylibre_device.py beaglebone-black dut0-bbb -t 2000 -p 1  -b
 sudo ./add_baylibre_device.py panda-es dut1-panda-es -t 2001 -p 2
 #sudo ./add_baylibre_device.py juno dut2-juno -t 2002 -p 3
 sudo ./add_baylibre_device.py jetson-tk1 dut2-jetson-tk1 -t 2002 -p 3
+sudo ./add_baylibre_device.py rpi-zero dut3-rpi-zero -t 2003
 
 sudo service lava-server restart
 sudo service apache2 restart
