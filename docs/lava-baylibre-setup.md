@@ -110,8 +110,6 @@ You may now disable the default site, and enable the lava instance:
 
 > sudo lava-server manage createsuperuser --username lab-admin --email=lab-admin@baylibre.com
 
-> password: powerci
-
 for debug only, it is recommended to settings the log level for the server
 to 'debug', in file /etc/init.d/lava-server
 
