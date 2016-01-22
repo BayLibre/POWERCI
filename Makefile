@@ -25,6 +25,8 @@ KERNELCI_TOKEN=bb4d438a-f412-4c65-9f7c-9daefd253ee7
 KERNELCI_API=http://api.kernelci.org
 KERNELCI_PLAN=boot
 
+export TEST_PLAN?=$(POWERCI_PLAN)
+
 help: $(HOME)/.lavarc
 	@clear
 	@echo
@@ -37,6 +39,8 @@ help: $(HOME)/.lavarc
 	@echo
 	@echo "Current LAVA config:"
 	@cat -n ~/.lavarc
+	@echo 
+	@echo "Using TEST_PLAN=$(TEST_PLAN), change with $$>TEST_PLAN=new make jobs"
 	@echo
 	@echo "== LAVA Setup & test FLOW =="
 	@echo "		auth		register user token with keyring (do once)"
@@ -52,7 +56,7 @@ jobs: ${LAVA_JOBS} $(HOME)/.lavarc
 
 ${LAVA_JOBS}:
 	cd scripts/lava-ci && ./lava-kernel-ci-job-creator.py --section baylibre http://storage.kernelci.org/$(TAG) \
- 	--plans $(POWERCI_PLAN) \
+ 	--plans $(TEST_PLAN) \
 	--targets $(LAB_BAYLIBRE_TARGETS) \
 	--arch arm
 
