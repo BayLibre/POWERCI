@@ -5,7 +5,8 @@ export LAVA_USER=powerci
 export BUNDLE_STREAM=/anonymous/powerci
 export LAVA_TOKEN=bm6p0a2q9w0sytib04bjacx0dlcdhnfo10qni24np8j5sk2tfxxqf65hygcpq13mzhaprf03dciec55ykpn0yr55k900i81ix0i5005y9fgk34x7j1eaq5k3pb6t2gdt
 
-TAG=mainline/v4.4-rc8
+#TAG=mainline/v4.4-rc8
+TAG=next/next-20160122
 
 RESULTS=lab-baylibre-$(subst /,_,$(TAG)).json
 
@@ -80,7 +81,7 @@ test:
 	cd scripts/lava-ci && ./lava-report-marc.py --boot results/lab-baylibre-mainline_v4.4-rc5.json --lab lab-baylibre --token ${POWERCI_TOKEN} --api http://powerci.org:8888
 
 
-kernelci: scripts/lava-ci/$(RESULTS)
+kernelci:
 	cd scripts/lava-ci && ./lava-report.py --boot results/$(RESULTS) --lab lab-baylibre --token ${KERNELCI_TOKEN} --api ${KERNELCI_API}
 
 ## CLEANUP
