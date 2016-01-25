@@ -68,6 +68,17 @@ this manual step might be necessary:
  * internet site config for email
  * fully qualified domain name: baylibre.com
 
+## Using Local changes to the lava-dispatcher
+
+The power measurement hooks are currently located in a baylibre github branch.
+THis branch is pulled by the manifest to SRC/lava-dispatcher. 
+
+It can be used in place of the python packages installed by the debian package.
+In lava-baylibre:/usr/lib/python2.7/dist-packages, create a symlink like:
+
+> sudo ln -s /home/powerci/POWERCI/SRC/lava-dispatcher/lava_dispatcher lava_dispatcher  
+
+
 ##  LAVA fs-overlays ##
 
 Some standard LAVA-debian files needs being simlinked to this repo, like for instance:
