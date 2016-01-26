@@ -1,12 +1,14 @@
 
 ## User specific, but this is the user we use...
 #
+# Note that if you create you own ~/.lavarc it should be used instead.
+#
 export LAVA_USER=powerci
 export BUNDLE_STREAM=/anonymous/powerci
 export LAVA_TOKEN=bm6p0a2q9w0sytib04bjacx0dlcdhnfo10qni24np8j5sk2tfxxqf65hygcpq13mzhaprf03dciec55ykpn0yr55k900i81ix0i5005y9fgk34x7j1eaq5k3pb6t2gdt
 
 #TAG=mainline/v4.4-rc8
-TAG=next/next-20160122
+export TAG?=next/next-20160122
 
 RESULTS=lab-baylibre-$(subst /,_,$(TAG)).json
 
@@ -16,7 +18,7 @@ export LAVA_SERVER=http://lava.baylibre.com:10080/RPC2/
 export LAVA_JOBS?=/home/powerci/POWERCI/jobs-$(subst /,_,$(TAG))
 
 #LAB_BAYLIBRE_TARGETS=beaglebone-black panda-es jetson-tk1
-LAB_BAYLIBRE_TARGETS=beaglebone-black panda-es
+LAB_BAYLIBRE_TARGETS=beaglebone-black panda-es rpi-zero
 
 POWERCI_TOKEN=3caf9787-2521-4276-ad2e-af2c64d19707
 POWERCI_API=http://powerci.org:8888
