@@ -5,3 +5,4 @@ images/*.img
 images/*.tgz
 *~
 ./jobs*
+/*jobs-*
