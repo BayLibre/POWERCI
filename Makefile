@@ -31,7 +31,7 @@ export TEST_PLAN?=$(POWERCI_PLAN)
 help: $(HOME)/.lavarc
 	@clear
 	@echo
-	@echo "== LAVACI / PowerCI FLOW =="
+	@echo "== LAVACI / PowerCI FLOW (on powerci.org) =="
 	@echo "		jobs		create jobs json files, based on selected kernel tag"
 	@echo "		runner		invoke lava-ci runner with jobs repo"
 	@echo "		powerci		push last results to powerci.org"
@@ -43,7 +43,7 @@ help: $(HOME)/.lavarc
 	@echo 
 	@echo "Using TEST_PLAN=$(TEST_PLAN), change with $$>TEST_PLAN=new make jobs"
 	@echo
-	@echo "== LAVA Setup & test FLOW =="
+	@echo "== LAVA Setup & test FLOW (on lava-baylibre.com) =="
 	@echo "		auth		register user token with keyring (do once)"
 	@echo "		stream		create /anonymous/LAVA_USER/ bundle stream (do once)"
 	@echo "		fix-jobs	hack json files to use directly with lava-tool"
