@@ -4,8 +4,8 @@
 # Note that if you create you own ~/.lavarc it should be used instead.
 #
 export LAVA_USER=powerci
-export BUNDLE_STREAM=/anonymous/powerci
-export LAVA_TOKEN=bm6p0a2q9w0sytib04bjacx0dlcdhnfo10qni24np8j5sk2tfxxqf65hygcpq13mzhaprf03dciec55ykpn0yr55k900i81ix0i5005y9fgk34x7j1eaq5k3pb6t2gdt
+export BUNDLE_STREAM=/anonymous/powerci/
+export LAVA_TOKEN=n4q5ksdmahr600i5aa4h38taobfexu939gg1c53xgz89iuce25cc98pouy06iypqm0kk8l58luu4ukgzsnkf6fef4afma3f38qijw0lcfnxgz4wtdx152j90a6r0hqxu
 
 #TAG=mainline/v4.4-rc8
 export TAG?=next/next-20160122
@@ -104,15 +104,14 @@ $(HOME)/.lavarc:
 
 ## LAVA ADMINISTRATION SECTION, setting up the user ##
 #
-auth:
+scripts/.$(LAVA_USER).tok:
 	echo $(LAVA_TOKEN) >  scripts/.$(LAVA_USER).tok
 	lava-tool auth-add --token-file  scripts/.$(LAVA_USER).tok $(LAVA_SERVER)
 
-scripts/.$(LAVA_USER).tok: auth
+auth: scripts/.$(LAVA_USER).tok
 
 stream: scripts/.$(LAVA_USER).tok
-	lava-tool make-stream --dashboard-url $(LAVA_SERVER) $(BUNDLE_STREAM)
-	date -I > scripts/.$(BUNDLE_STREAM)
+	-@lava-tool make-stream --dashboard-url $(LAVA_SERVER) $(BUNDLE_STREAM)
 
 fix-jobs:
 	-@rm -rf fixed-jobs
