@@ -16,6 +16,7 @@ run the script located under:
 
 > POWERCI/scripts/lab-setup/add-boards-baylibre.sh
 
+i.e (see actual file): 
 ```
 	sudo /usr/share/lava-server/add_device.py kvm kvm01
 	sudo /usr/share/lava-server/add_device.py beaglebone-black dut0-bbb -t 2000 -p 100 -b
@@ -65,6 +66,15 @@ Those commands are used in the devices/{device}.conf files:
 		hard_reset_command = ssh -t root@acme_0.local dut-hard-reset 1
 		power_off_cmd = ssh -t root@acme_0.local dut-switch-off 1
 ```
+
+### Power Stats Recording Tool ###
+
+Compile and intall the capture tool:
+
+```
+make -C SRC/iio-capture install
+```
+
 ### Setting Up the Client type ###
 
 All device settings default to values defined in 
