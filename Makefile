@@ -3,6 +3,12 @@
 #
 # Note that if you create you own ~/.lavarc it should be used instead.
 #
+export TOPDIR=/home/powerci/POWERCI
+
+## Define this as the root dir for lava-ci
+#
+export WORKSPACE=$(TOPDIR)/SRC
+
 export LAVA_USER=powerci
 export BUNDLE_STREAM=/anonymous/powerci/
 export LAVA_TOKEN=n4q5ksdmahr600i5aa4h38taobfexu939gg1c53xgz89iuce25cc98pouy06iypqm0kk8l58luu4ukgzsnkf6fef4afma3f38qijw0lcfnxgz4wtdx152j90a6r0hqxu
@@ -15,7 +21,7 @@ RESULTS=lab-baylibre-$(subst /,_,$(TAG)).json
 export LAVA_SERVER_IP=lava.baylibre.com
 export LAVA_SERVER=http://lava.baylibre.com:10080/RPC2/
 
-export LAVA_JOBS?=/home/powerci/POWERCI/jobs-$(subst /,_,$(TAG))
+export LAVA_JOBS?=$(TOPDIR)/jobs-$(subst /,_,$(TAG))
 
 #LAB_BAYLIBRE_TARGETS=beaglebone-black panda-es jetson-tk1
 LAB_BAYLIBRE_TARGETS=beaglebone-black panda-es rpi-zero
@@ -58,33 +64,38 @@ help: $(HOME)/.lavarc
 jobs: ${LAVA_JOBS} $(HOME)/.lavarc
 
 ${LAVA_JOBS}:
-	cd scripts/lava-ci && ./lava-kernel-ci-job-creator.py --section baylibre http://storage.kernelci.org/$(TAG) \
+	cd $(WORKSPACE)/lava-ci && ./lava-kernel-ci-job-creator.py --section baylibre \
+	http://storage.kernelci.org/$(TAG) \
  	--plans $(TEST_PLAN) \
 	--targets $(LAB_BAYLIBRE_TARGETS) \
 	--arch arm
 
-scripts/lava-ci/$(RESULTS): runner
+$(WORKSPACE)/lava-ci/$(RESULTS): runner
 	-@mkdir -p archive
-	-@cp -rf scripts/lava-ci/$(RESULTS) archive
+	-@cp -rf $(WORKSPACE)/lava-ci/$(RESULTS) archive
 	-@cp -f $(LAVA_JOBS) archive/$(RESULTS)
 
 runner:	${LAVA_JOBS}
-	cd scripts/lava-ci && ./lava-job-runner.py  --section baylibre  --poll $(RESULTS)
+	cd $(WORKSPACE)/lava-ci && ./lava-job-runner.py  --section baylibre  --poll $(RESULTS)
 
 ## SUBMIT
 #
 powerci: 
-	cd scripts/lava-ci && ./lava-report.py --boot results/$(RESULTS) --lab lab-baylibre --token ${POWERCI_TOKEN} --api ${POWERCI_API}
+	cd $(WORKSPACE)/lava-ci && ./lava-report.py --boot results/$(RESULTS) --lab lab-baylibre \
+	--token ${POWERCI_TOKEN} --api ${POWERCI_API}
 
 ## Trials with KCI API changes for power stats
 test:
-	rm -rf scripts/lava-ci/results
-	cp -rf scripts/results_TEST scripts/lava-ci/results
-	cd scripts/lava-ci && ./lava-report-marc.py --boot results/lab-baylibre-mainline_v4.4-rc5.json --lab lab-baylibre --token ${POWERCI_TOKEN} --api http://powerci.org:8888
+	rm -rf $(WORKSPACE)/lava-ci/results
+	cp -rf scripts/results_TEST $(WORKSPACE)/lava-ci/results
+	cd $(WORKSPACE)/lava-ci && ./lava-report-marc.py \ 
+	--boot results/lab-baylibre-mainline_v4.4-rc5.json \
+	--lab lab-baylibre --token ${POWERCI_TOKEN} --api http://powerci.org:8888
 
 
 kernelci:
-	cd scripts/lava-ci && ./lava-report.py --boot results/$(RESULTS) --lab lab-baylibre --token ${KERNELCI_TOKEN} --api ${KERNELCI_API}
+	cd $(WORKSPACE)/lava-ci && ./lava-report.py --boot results/$(RESULTS) \
+	--lab lab-baylibre --token ${KERNELCI_TOKEN} --api ${KERNELCI_API}
 
 ## CLEANUP
 #
@@ -139,5 +150,5 @@ post:
 	lava-tool submit-job http://powerci@lava.baylibre.com:10080/RPC2/ $(MYJOB)
 
 jetson:
-	cd scripts/lava-ci && LAVA_JOBS=$(shell pwd)/jetson ./lava-kernel-ci-job-creator.py --section baylibre http://storage.kernelci.org/$(TAG) \
+	cd $(WORKSPACE)/lava-ci && LAVA_JOBS=$(shell pwd)/jetson ./lava-kernel-ci-job-creator.py --section baylibre http://storage.kernelci.org/$(TAG) \
 	--plans boot --targets jetson-tk1 --arch arm
