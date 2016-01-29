@@ -1,0 +1,35 @@
+
+# POWERCI: Getting started #
+
+you may want to read /home/powerci/POWERCI/README.md
+
+Note: I usually work with user powerci, from folder ~/POWERCI.
+But it should work with another user if the token/bundle-streams/lava accounts are properly dealt with.
+
+
+## Setup the Kernel tag to test ##
+
+	vim /home/powerci/POWERCI/Makefile
+
+* e. g.  change TAG=mainline/v4.4-rc8 to some other tag generated for kernelci storage
+
+## Create the jobs ##
+
+	make -C /home/powerci/POWERCI	jobs
+
+## run the job, and create the result ##
+
+	make -C /home/powerci/POWERCI	runner
+
+## post to Powerci.org ##
+
+	make -C /home/powerci/POWERCI	powerci
+
+# Setting the Plan (Boot versus Power) #
+
+See in the Makefile, this is hardcoded for 'power' but you can go back to 'boot' plan
+by changing:
+
+	 POWERCI_PLAN=boot
+
+
