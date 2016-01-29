@@ -5,6 +5,11 @@
 #
 export TOPDIR=/home/powerci/POWERCI
 
+## This is where we store the attached files for each job.
+#  This is used by lava-ci
+#
+export ATTACHMENTS=/var/www/html/kernel-ci/attachments
+
 ## Define this as the root dir for lava-ci
 #
 export WORKSPACE=$(TOPDIR)/SRC
@@ -24,7 +29,7 @@ export LAVA_SERVER=http://lava.baylibre.com:10080/RPC2/
 export LAVA_JOBS?=$(TOPDIR)/jobs-$(subst /,_,$(TAG))
 
 #LAB_BAYLIBRE_TARGETS=beaglebone-black panda-es jetson-tk1
-LAB_BAYLIBRE_TARGETS=beaglebone-black panda-es rpi-zero
+LAB_BAYLIBRE_TARGETS=beaglebone-black panda-es bcm2835-rpi-b-plus
 
 POWERCI_TOKEN=3caf9787-2521-4276-ad2e-af2c64d19707
 POWERCI_API=http://powerci.org:8888
