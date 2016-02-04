@@ -13,7 +13,7 @@ this is meant to be pulled to /home/powerci, and operated mainly by user powerci
 
 ` mkdir -p /home/powerci/POWERCI && cd POWERCI`
 
-` repo init -u git@github.com:mtitinger/powerci-manifests.git`
+` repo init -u git@github.com:baylibre/manifests.git -m powerci/default.xml`
 
 ` repo sync`
 

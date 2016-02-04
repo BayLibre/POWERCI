@@ -18,8 +18,10 @@ export LAVA_USER=powerci
 export BUNDLE_STREAM=/anonymous/powerci/
 export LAVA_TOKEN=n4q5ksdmahr600i5aa4h38taobfexu939gg1c53xgz89iuce25cc98pouy06iypqm0kk8l58luu4ukgzsnkf6fef4afma3f38qijw0lcfnxgz4wtdx152j90a6r0hqxu
 
-#TAG=mainline/v4.4-rc8
-export TAG?=next/next-20160122
+
+export TAG?=mainline/v4.5-rc1
+#export TAG?=next/next-20160204
+#export TAG?=next/next-20160122
 
 RESULTS=lab-baylibre-$(subst /,_,$(TAG)).json
 
