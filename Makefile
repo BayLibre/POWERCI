@@ -19,7 +19,7 @@ export BUNDLE_STREAM=/anonymous/powerci/
 export LAVA_TOKEN=n4q5ksdmahr600i5aa4h38taobfexu939gg1c53xgz89iuce25cc98pouy06iypqm0kk8l58luu4ukgzsnkf6fef4afma3f38qijw0lcfnxgz4wtdx152j90a6r0hqxu
 
 
-export TAG?=mainline/v4.5-rc1
+export TAG?=mainline/v4.5-rc3
 #export TAG?=next/next-20160204
 #export TAG?=next/next-20160122
 
@@ -33,8 +33,11 @@ export LAVA_JOBS?=$(TOPDIR)/jobs-$(subst /,_,$(TAG))
 #LAB_BAYLIBRE_TARGETS=beaglebone-black panda-es jetson-tk1
 LAB_BAYLIBRE_TARGETS=beaglebone-black panda-es bcm2835-rpi-b-plus
 
-POWERCI_TOKEN=3caf9787-2521-4276-ad2e-af2c64d19707
-POWERCI_API=http://powerci.org:8888
+#POWERCI_TOKEN=3caf9787-2521-4276-ad2e-af2c64d19707
+#POWERCI_API=http://powerci.org:8888
+POWERCI_TOKEN=4fd6s5f341sd35f41c3ds5f41dc63eQ5D4C1E6R8G54RF16
+POWERCI_API=http://localhost:9999
+
 POWERCI_PLAN=power
 
 KERNELCI_TOKEN=bb4d438a-f412-4c65-9f7c-9daefd253ee7
