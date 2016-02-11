@@ -96,7 +96,25 @@ those fields match the optional parameters of the lava job JSON:
 
 ### Optional fields additions ###
 
-These fields must be optionnal, since not all labs will support them.
+We are adding a new test plan to lava-ci called "power". This implies:
+
+* creating a job template folder for the power related plan, used during job generation
+* extening the "POST" API payload with the mention of the test-plan, to handle specific data.
+
+we add the following key:
+
+```
+	"test_plan": "power",
+```
+
+In the case of a 'power' test plan, the front-end will seek after
+a list of unit test reports. This list is called "power_stats".
+Each unit-test in the list is a dictionary of power statistics
+to be displayed or charted if "title" and "data" allow to build a path
+to a usable attached CSV file.
+
+A unit test report as described above matches a test_case_id report
+the in a LAVA job bundle.
 
 ```
         "power_stats": [{
@@ -111,6 +129,8 @@ These fields must be optionnal, since not all labs will support them.
                 "data": "c762a5ed"
         }],
 ```
+
+These fields must be optionnal since not all labs will support them.
 
 ### Example of resulting payload ###
 
