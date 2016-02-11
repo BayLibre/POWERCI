@@ -98,16 +98,64 @@ those fields match the optional parameters of the lava job JSON:
 
 These fields must be optionnal, since not all labs will support them.
 
+```
+        "power_stats": [{
+                "power_min": "1425.00",
+                "current_min": "279.00",
+                "title": "data.csv",
+                "energy": "290.78",
+                "current_max": "353.00",
+                "power_avg": "1435.59",
+                "power_max": "1800.00",
+                "voltage_max": "5125.00",
+                "data": "c762a5ed"
+        }],
+```
+
+### Example of resulting payload ###
+
 The fileds are as per the output of iio-capture, see <https://github.com/BayLibre/iio-capture>
 
 ```
-	"voltage_max":	 5110.00,
-	"power_max":	 2525.00,
-	"power_avg":	 1988.35,
-	"power_min":	 1925.00,
-	"energy":	 714.41,
-	"current_max":	 492.00,
-	"current_min":	 378.00,
+{
+	"kernel": "v4.5-rc3",
+	"boot_log": "boot-am335x-boneblack.txt",
+	"initrd": null,
+	"boot_result": "PASS",
+	"loadaddr": "0x81000000",
+	"power_stats": [{
+		"power_min": "1425.00",
+		"current_min": "279.00",
+		"title": "data.csv",
+		"energy": "290.78",
+		"current_max": "353.00",
+		"power_avg": "1435.59",
+		"power_max": "1800.00",
+		"voltage_max": "5125.00",
+		"data": "c762a5ed"
+	}],
+	"fastboot": "false",
+	"dtb_append": "False",
+	"lab_name": "lab-baylibre",
+	"version": "1.0",
+	"board": "am335x-boneblack",
+	"dtb_addr": "0x81f00000",
+	"dt_test": null,
+	"boot_warnings": null,
+	"initrd_addr": "0x82000000",
+	"kernel_image": "zImage",
+	"board_instance": "dut0-bbb",
+	"job": "mainline",
+	"boot_time": "4.30",
+	"arch": "arm",
+	"mach": "omap2",
+	"boot_log_html": "boot-am335x-boneblack.html",
+	"retries": 0,
+	"dtb": "dtbs/am335x-boneblack.dtb",
+	"defconfig": "omap2plus_defconfig",
+	"test_plan": "power",
+	"endian": "little"
+}
 ```
 
 ## LAVA Power recording hooks ##
