@@ -40,6 +40,7 @@ done.
 ## "Power Metrics" tab in the frontend
 
 PowerCI adds a "[Power Metrics]" tab  <http://www.powerci.org/power/>
+or <http://www.powerci.org:8080/powerci/powers.html>
 
 * each line is a job, like in the [boots] tab <http://www.kernelci.org/boot/>
 
@@ -54,7 +55,12 @@ The job status must be "passed", and the job must have some power metrics.
 * col7 : Voltage Max (Volt)
 * col8 : Current Max (Ampere)
 
-## KernelCI API Payload changes ##
+## KernelCI BOOT API Payload changes ##
+
+the changes described below are located in branch "boot-api-mod"
+in git@github.com:BayLibre/lava-ci.git.
+
+WIP: THIS MAY BE OBSOLETE as we are looking in using the TEST API.
 
 ### Original Payload ###
 
