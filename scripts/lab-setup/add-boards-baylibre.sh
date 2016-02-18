@@ -8,12 +8,13 @@
 
 #sudo ./add_baylibre_device.py qemu-arm qemu0
 #sudo ./add_baylibre_device.py kvm kvm01
-sudo ./add_baylibre_device.py beaglebone-black beaglebone-black_0  -t 2000 -p 1  -b
-sudo ./add_baylibre_device.py panda-es panda-es_0 -t 2001 -p 2
-#sudo ./add_baylibre_device.py juno dut2-juno -t 2002 -p 3
-#sudo ./add_baylibre_device.py jetson-tk1 dut2-jetson-tk1 -t 2002 -p 3
-sudo ./add_baylibre_device.py rpi-zero rpi-zero_0 -t 2003
-sudo ./add_baylibre_device.py meson8b-odroidc1 meson8b-odroidc1_0 -t 2004
+ACME_CMD="ssh -t root@lab-baylibre-acme.local"
+
+sudo ./add_baylibre_device.py beaglebone-black beaglebone-black_0  -t 2000 -p 1  -a $ACME_CMD -b
+sudo ./add_baylibre_device.py panda-es panda-es_0 -t 2001 -p 2 -a $ACME_CMD
+sudo ./add_baylibre_device.py rpi-zero rpi-zero_0 -t 2003 -p 3 -a $ACME_CMD
+sudo ./add_baylibre_device.py meson8b-odroidc1 meson8b-odroidc1_0 -t 2004 -p 4 -a $ACME_CMD
+sudo ./add_baylibre_device.py juno juno_0 -t 2005 -p 5 -a $ACME_CMD
 
 #sudo service lava-server restart
 #sudo service apache2 restart

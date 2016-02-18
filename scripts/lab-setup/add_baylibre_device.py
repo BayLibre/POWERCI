@@ -137,6 +137,8 @@ def main(dt, name, options):
         'device_type',
         'hostname',
         'connection_command',
+	'host_hook_enter_command',
+        'host_hook_exit_command',
         'hard_reset_command',
         'power_off_cmd'
     ]
@@ -166,11 +168,17 @@ def main(dt, name, options):
         except ValueError:
             print ("Unable to parse %s as a port number" % options.pduport)
             exit(1)
-        config['hard_reset_command'] = "/usr/bin/pduclient " \
+        if options.acmecmd:
+            config['hard_reset_command'] = str(options.acmecmd) + " dut-hard-reset " + str(options.pduport) + " &"
+            config['power_off_cmd'] = str(options.acmecmd) + " dut-switch-off " + str(options.pduport) + " &"
+            config['host_hook_enter_command'] = "iio-probe-start " + str(int(options.pduport)-1)
+            config['host_hook_exit_command'] = "iio-probe-stop " + str(int(options.pduport)-1)
+        else:
+            config['hard_reset_command'] = "/usr/bin/pduclient " \
                                        "--daemon localhost " \
                                        "--hostname baylibre-acme.local --command reboot" \
                                        "--port %02d" % options.pduport
-        config['power_off_cmd'] = "/usr/bin/pduclient " \
+            config['power_off_cmd'] = "/usr/bin/pduclient " \
                                   "--daemon localhost " \
                                   "--hostname baylibre-acme.local --command off " \
                                   "--port %02d" % options.pduport
@@ -223,7 +231,7 @@ def main(dt, name, options):
     return 0
 
 if __name__ == '__main__':
-    usage = "Usage: %prog devicetype hostname [-p pduport] [-t telnetport]"
+    usage = "Usage: %prog devicetype hostname [-p pduport] [-t telnetport] [-a acmecmd] "
     description = "LAVA device helper. Allows local admins to add devices to a " \
                   "running instance by creating the database entry and creating an initial " \
                   "device configuration. Optionally add the pdu port and ser2net port to use " \
@@ -233,8 +241,11 @@ if __name__ == '__main__':
                   "pduport settings are intended to support lavapdu only." \
                   "telnetport settings are intended to support ser2net only."
     pduport = None
+    acmecmd = ""
     telnetport = None
     parser = optparse.OptionParser(usage=usage, description=description)
+    parser.add_option("-a", "--acmecmd", dest="acmecmd", action="store",
+                      type="string", help="ACME ssh url for on/off ex: ssh -t root@lab-baylibre-acme.local")
     parser.add_option("-p", "--pduport", dest="pduport", action="store",
                       type="string", help="PDU Portnumber (ex: 04)")
     parser.add_option("-t", "--telnetport", dest="telnetport", action="store",
