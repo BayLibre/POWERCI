@@ -32,9 +32,8 @@ export LAVA_SERVER=http://lava.baylibre.com:10080/RPC2/
 
 export LAVA_JOBS?=$(TOPDIR)/jobs-$(subst /,_,$(TAG))
 
-#LAB_BAYLIBRE_TARGETS=beaglebone-black panda-es jetson-tk1
-#LAB_BAYLIBRE_TARGETS=beaglebone-black panda-es bcm2835-rpi-b-plus
-LAB_BAYLIBRE_TARGETS=beaglebone-black panda-es meson8b-odroidc1 
+LAB_BAYLIBRE_TARGETS=beaglebone-black panda-es meson8b-odroidc1
+LAB_BAYLIBRE_TARGETS_64=juno
 
 #POWERCI_TOKEN=3caf9787-2521-4276-ad2e-af2c64d19707
 #POWERCI_API=http://powerci.org:8888
@@ -61,7 +60,7 @@ help: $(HOME)/.lavarc
 	@echo
 	@echo "Current LAVA config:"
 	@cat -n ~/.lavarc
-	@echo 
+	@echo
 	@echo "Using TEST_PLAN=$(TEST_PLAN), change with $$>TEST_PLAN=new make jobs"
 	@echo
 	@echo "== LAVA Setup & test FLOW (on lava-baylibre.com) =="
@@ -79,7 +78,12 @@ jobs: ${LAVA_JOBS} $(HOME)/.lavarc
 ${LAVA_JOBS}:
 	cd $(WORKSPACE)/lava-ci && ./lava-kernel-ci-job-creator.py --section baylibre \
 	http://storage.kernelci.org/$(TAG) \
- 	--plans $(TEST_PLAN) \
+	--plans $(TEST_PLAN) \
+	--targets $(LAB_BAYLIBRE_TARGETS_64) \
+	--arch arm64
+	cd $(WORKSPACE)/lava-ci && ./lava-kernel-ci-job-creator.py --section baylibre \
+	http://storage.kernelci.org/$(TAG) \
+	--plans $(TEST_PLAN) \
 	--targets $(LAB_BAYLIBRE_TARGETS) \
 	--arch arm
 
