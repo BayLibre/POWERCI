@@ -1,0 +1,33 @@
+#!/bin/bash
+
+# Make sure that file /etc/egtab is properly set.
+
+
+if [ $1 -eq 4 ]
+then
+/usr/local/bin/egctl egpm2 left left left off > /dev/null
+sleep 1
+/usr/local/bin/egctl egpm2 left left left on > /dev/null
+fi
+
+if [ $1 -eq 3 ]
+then
+/usr/local/bin/egctl egpm2 left left off left > /dev/null
+sleep 1
+/usr/local/bin/egctl egpm2 left left on left > /dev/null
+fi
+
+if [ $1 -eq 2 ]
+then
+/usr/local/bin/egctl egpm2 left off left left > /dev/null
+sleep 1
+/usr/local/bin/egctl egpm2 left on left left > /dev/null
+fi
+
+if [ $1 -eq 1 ]
+then
+/usr/local/bin/egctl egpm2 off left left left > /dev/null
+sleep 1
+/usr/local/bin/egctl egpm2 on left left left > /dev/null
+fi
+
