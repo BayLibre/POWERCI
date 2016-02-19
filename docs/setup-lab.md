@@ -45,6 +45,7 @@ the following link is useful <https://validation.linaro.org/static/docs/lava-ima
 
 ### Power Cycling the boards ###
 
+#### ACME Controlled DUTs ####
 until ACME is supported in PDUDaemon, the test JSON files can be adapted to log into ACME and switch the power probes GPIOs.
 The script "acme_0#>/usr/bin/dut-switch-on 2" for instance will power on the DUT connected to PROBE2.
 the following scripts must be deployed on the ACME image create with buildroot, the are currently available in the git <blah>
@@ -66,6 +67,25 @@ Those commands are used in the devices/{device}.conf files:
 		hard_reset_command = ssh -t root@acme_0.local dut-hard-reset 1
 		power_off_cmd = ssh -t root@acme_0.local dut-switch-off 1
 ```
+
+#### Energenie LAN PDU ####
+
+A small control applet is located under SRC/egctl
+It uses a config file in /etc/egtab, the current model owned by BayLibre
+will respond to the following setting:
+
+```
+# /etc/egtab: egctl configuration file
+#
+# Name      Protocol IP              Port    Password
+# --------- -------- --------------- ------- --------
+egpm2     pms21    192.168.1.195    5000    1
+```
+a typical command line will be:
+
+* switch off the second socket (others unchanged): /egctl egpm2 left off left left
+* switch on  the second socket (others unchanged): /egctl egpm2 left on left left
+* resetting a board: today it will require putting a sequence into a script.
 
 ### Power Stats Recording Tool ###
 
