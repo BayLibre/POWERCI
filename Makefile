@@ -18,12 +18,9 @@ export LAVA_USER=powerci
 export BUNDLE_STREAM=/anonymous/powerci/
 export LAVA_TOKEN=n4q5ksdmahr600i5aa4h38taobfexu939gg1c53xgz89iuce25cc98pouy06iypqm0kk8l58luu4ukgzsnkf6fef4afma3f38qijw0lcfnxgz4wtdx152j90a6r0hqxu
 
-
-#export TAG?=mainline/v4.5-rc3-83-gc05235d50f68
-export TAG?=mainline/v4.5-rc3-23-g2178cbc68f36
+#export TAG?=mainline/v4.5-rc3-23-g2178cbc68f36
+export TAG?=mainline/v4.5-rc6-8-gf691b77b1fc4
 #export TAG?=mainline/v4.5-rc3
-#export TAG?=next/next-20160204
-#export TAG?=next/next-20160122
 
 RESULTS=lab-baylibre-$(subst /,_,$(TAG)).json
 
@@ -32,13 +29,11 @@ export LAVA_SERVER=http://lava.baylibre.com:10080/RPC2/
 
 export LAVA_JOBS?=$(TOPDIR)/jobs-$(subst /,_,$(TAG))
 
-LAB_BAYLIBRE_TARGETS=beaglebone-black panda-es meson8b-odroidc1
-LAB_BAYLIBRE_TARGETS_64=juno
+LAB_BAYLIBRE_TARGETS=beaglebone-black
+#LAB_BAYLIBRE_TARGETS_64=juno
 
-#POWERCI_TOKEN=3caf9787-2521-4276-ad2e-af2c64d19707
-#POWERCI_API=http://powerci.org:8888
 POWERCI_TOKEN=4fd6s5f341sd35f41c3ds5f41dc63eQ5D4C1E6R8G54RF16
-POWERCI_API=http://localhost:9999
+POWERCI_API=http://powerci.org:9999
 
 POWERCI_PLAN=power
 
@@ -76,7 +71,7 @@ help: $(HOME)/.lavarc
 jobs: ${LAVA_JOBS} $(HOME)/.lavarc
 
 ${LAVA_JOBS}:
-	cd $(WORKSPACE)/lava-ci && ./lava-kernel-ci-job-creator.py --section baylibre \
+#	cd $(WORKSPACE)/lava-ci && ./lava-kernel-ci-job-creator.py --section baylibre \
 	http://storage.kernelci.org/$(TAG) \
 	--plans $(TEST_PLAN) \
 	--targets $(LAB_BAYLIBRE_TARGETS_64) \
@@ -102,13 +97,19 @@ powerci:
 	--token ${POWERCI_TOKEN} --api ${POWERCI_API}
 
 ## Trials with KCI API changes for power stats
-test:
+test-test:
 	rm -rf $(WORKSPACE)/lava-ci/results
-	cp -rf scripts/results_TEST $(WORKSPACE)/lava-ci/results
-	cd $(WORKSPACE)/lava-ci && ./lava-report-marc.py \ 
-	--boot results/lab-baylibre-mainline_v4.4-rc5.json \
-	--lab lab-baylibre --token ${POWERCI_TOKEN} --api http://powerci.org:8888
+	cp -rf $(WORKSPACE)/lava-ci/results_SAVENEW $(WORKSPACE)/lava-ci/results
+	cd $(WORKSPACE)/lava-ci && ./lava-report.py \
+	--test  $(WORKSPACE)/lava-ci/results/$(RESULTS) \
+	--lab lab-baylibre --token ${POWERCI_TOKEN} --api ${POWERCI_API}
 
+test-boot:
+	rm -rf $(WORKSPACE)/lava-ci/results
+	cp -rf $(WORKSPACE)/lava-ci/results_SAVENEW $(WORKSPACE)/lava-ci/results
+	cd $(WORKSPACE)/lava-ci && ./lava-report.py \
+	--boot  $(WORKSPACE)/lava-ci/results/$(RESULTS) \
+	--lab lab-baylibre --token ${POWERCI_TOKEN} --api ${POWERCI_API}
 
 kernelci:
 	cd $(WORKSPACE)/lava-ci && ./lava-report.py --boot results/$(RESULTS) \
