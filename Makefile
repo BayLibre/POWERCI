@@ -19,7 +19,8 @@ export BUNDLE_STREAM=/anonymous/powerci/
 export LAVA_TOKEN=n4q5ksdmahr600i5aa4h38taobfexu939gg1c53xgz89iuce25cc98pouy06iypqm0kk8l58luu4ukgzsnkf6fef4afma3f38qijw0lcfnxgz4wtdx152j90a6r0hqxu
 
 #export TAG?=mainline/v4.5-rc3-23-g2178cbc68f36
-export TAG?=mainline/v4.5-rc6-8-gf691b77b1fc4
+#export TAG?=mainline/v4.5-rc6-8-gf691b77b1fc4
+export TAG?=next/next-20160310
 #export TAG?=mainline/v4.5-rc3
 
 RESULTS=lab-baylibre-$(subst /,_,$(TAG)).json
@@ -93,6 +94,7 @@ runner:	${LAVA_JOBS}
 ## SUBMIT
 #
 powerci: 
+	cd $(WORKSPACE)/lava-ci && cp -r results results_SAVE
 	cd $(WORKSPACE)/lava-ci && ./lava-report.py --boot results/$(RESULTS) --lab lab-baylibre \
 	--token ${POWERCI_TOKEN} --api ${POWERCI_API}
 
