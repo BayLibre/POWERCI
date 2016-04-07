@@ -1,0 +1,6 @@
+KERNEL=="ttyUSB*", KERNELS=="1-1.1.2", SYMLINK="acme"
+KERNEL=="ttyUSB*", KERNELS=="1-1.1.3", SYMLINK="odroid" 
+KERNEL=="ttyUSB*", KERNELS=="1-1.4.3", SYMLINK="bbb"
+KERNEL=="ttyUSB*", KERNELS=="1-1.4.1", NAME="dragon3"
+KERNEL=="ttyUSB*", KERNELS=="1-1.4.4.1", SYMLINK="panda"
+KERNEL=="ttyUSB*", KERNELS=="1-1.4.4.3", SYMLINK="juno"
