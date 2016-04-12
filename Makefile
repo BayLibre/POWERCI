@@ -123,20 +123,16 @@ matching:
 ## SUBMIT
 #
 powerci: 
-	cd $(WORKSPACE)/lava-ci && ./lava-report.py --boot results/$(RESULTS) \
-	--lab lab-baylibre --token ${POWERCI_TOKEN} --api ${POWERCI_API}
+	cd $(WORKSPACE)/lava-ci && ./lava-report.py --boot results/$(RESULTS) --lab lab-baylibre --token ${POWERCI_TOKEN} --api ${POWERCI_API}
 
 pushboot: 
-	cd $(WORKSPACE)/lava-ci && ./lava-report.py --boot results/matching-boot.json \
-	--lab lab-baylibre --token ${POWERCI_TOKEN} --api ${POWERCI_API}
+	cd $(WORKSPACE)/lava-ci && ./lava-report.py --boot $(WORKSPACE)/lava-ci/results/matching-boots.json --lab lab-baylibre --token ${POWERCI_TOKEN} --api ${POWERCI_API}
 
 pushtest:
-	cd $(WORKSPACE)/lava-ci && ./lava-report.py --test  results/matching-test.json \
-	--lab lab-baylibre --token ${POWERCI_TOKEN} --api ${POWERCI_API}
+	cd $(WORKSPACE)/lava-ci && ./lava-report.py --test $(WORKSPACE)/lava-ci/results/matching-boots.json --lab lab-baylibre --token ${KERNELCI_TOKEN} --api ${KERNELCI_API}
 
 kernelci:
-	cd $(WORKSPACE)/lava-ci && ./lava-report.py --boot results/$(RESULTS) \
-	--lab lab-baylibre --token ${KERNELCI_TOKEN} --api ${KERNELCI_API}
+	cd $(WORKSPACE)/lava-ci && ./lava-report.py --boot results/$(RESULTS) --lab lab-baylibre --token ${KERNELCI_TOKEN} --api ${KERNELCI_API}
 
 ## CLEANUP
 #
