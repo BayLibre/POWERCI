@@ -60,6 +60,14 @@ export TEST_PLAN?=$(POWERCI_PLAN)
 help: $(HOME)/.lavarc
 	@clear
 	@echo
+	@echo "== PowerCI (new) FLOW =="
+	@echo "		jobs		create jobs json files, based on selected kernel tag"
+	@echo "		submit		post jobs to lava and exit"
+	@echo "		matching	pull results from LAVA matching the current TAG"
+	@echo "		pushtest	push last test/json results to kernelci.org"
+	@echo "		pushboot	push last boot/json results to kernelci.org"
+	@echo "		clean		remove jobs and results"
+	@echo "" 
 	@echo "== LAVACI / PowerCI FLOW (on powerci.org) =="
 	@echo "		jobs		create jobs json files, based on selected kernel tag"
 	@echo "		runner		invoke lava-ci runner with jobs repo"
@@ -101,35 +109,29 @@ $(WORKSPACE)/lava-ci/$(RESULTS): runner
 	-@cp -rf $(WORKSPACE)/lava-ci/$(RESULTS) archive
 	-@cp -f $(LAVA_JOBS) archive/$(RESULTS)
 
+
+# sub mit with no poll, and later pull using lava-matching-report.py
+sumbit:
+	cd $(WORKSPACE)/lava-ci && ./lava-job-runner.py  --section baylibre --jobs ${LAVA_JOBS}
+
 runner:	${LAVA_JOBS}
 	cd $(WORKSPACE)/lava-ci && ./lava-job-runner.py  --section baylibre  --poll $(RESULTS)
 
-alljobs:
-	cd $(WORKSPACE)/lava-ci && ./lava-all-jobs.py  --section baylibre
-	cd $(WORKSPACE)/lava-ci && ./lava-report.py --boot results/all.json --lab lab-baylibre \
-        --token ${POWERCI_TOKEN} --api ${POWERCI_API}
-
+matching:
+	cd $(WORKSPACE)/lava-ci && ./lava-matching-report.py  --section baylibre --matching $(subst /,-,$(TAG))
 
 ## SUBMIT
 #
 powerci: 
-	cd $(WORKSPACE)/lava-ci && cp -r results results_SAVE
-	cd $(WORKSPACE)/lava-ci && ./lava-report.py --boot results/$(RESULTS) --lab lab-baylibre \
-	--token ${POWERCI_TOKEN} --api ${POWERCI_API}
-
-## Trials with KCI API changes for power stats
-test-test:
-	rm -rf $(WORKSPACE)/lava-ci/results
-	cp -rf $(WORKSPACE)/lava-ci/results_SAVENEW $(WORKSPACE)/lava-ci/results
-	cd $(WORKSPACE)/lava-ci && ./lava-report.py \
-	--test  $(WORKSPACE)/lava-ci/results/$(RESULTS) \
+	cd $(WORKSPACE)/lava-ci && ./lava-report.py --boot results/$(RESULTS) \
 	--lab lab-baylibre --token ${POWERCI_TOKEN} --api ${POWERCI_API}
 
-test-boot:
-	rm -rf $(WORKSPACE)/lava-ci/results
-	cp -rf $(WORKSPACE)/lava-ci/results_SAVENEW $(WORKSPACE)/lava-ci/results
-	cd $(WORKSPACE)/lava-ci && ./lava-report.py \
-	--boot  $(WORKSPACE)/lava-ci/results/$(RESULTS) \
+pushboot: 
+	cd $(WORKSPACE)/lava-ci && ./lava-report.py --boot results/matching-boot.json \
+	--lab lab-baylibre --token ${POWERCI_TOKEN} --api ${POWERCI_API}
+
+pushtest:
+	cd $(WORKSPACE)/lava-ci && ./lava-report.py --test  results/matching-test.json \
 	--lab lab-baylibre --token ${POWERCI_TOKEN} --api ${POWERCI_API}
 
 kernelci:
