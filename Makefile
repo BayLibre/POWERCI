@@ -20,8 +20,21 @@ export LAVA_TOKEN=n4q5ksdmahr600i5aa4h38taobfexu939gg1c53xgz89iuce25cc98pouy06iy
 
 #export TAG?=mainline/v4.5-rc3-23-g2178cbc68f36
 #export TAG?=mainline/v4.5-rc6-8-gf691b77b1fc4
-export TAG?=next/next-20160310
-#export TAG?=mainline/v4.5-rc3
+#export TAG?=mainline/v4.5-rc5
+#export TAG?=mainline/v4.6-rc2-42-g1e1e5ce78ff0
+#export TAG?=mainline/v4.6-rc2-84-g541d8f4d59d7
+#export TAG?=mainline/v4.6-rc3
+export TAG?=mainline/v4.6-rc2-150-g93061f390f10
+#export TAG?=mainline/v4.6-rc1
+
+#export TAG?=next/next-20160401
+#export TAG?=broonie-regmap/v4.6-rc1-5-gdcb05f2c7eee
+
+#export TAG?=stable/v4.4.6
+#export TAG?=omap/v4.6-rc1-29-g6de37509e43d
+
+
+#export TAG?=mainline/v4.5-rc4
 
 RESULTS=lab-baylibre-$(subst /,_,$(TAG)).json
 
@@ -90,6 +103,12 @@ $(WORKSPACE)/lava-ci/$(RESULTS): runner
 
 runner:	${LAVA_JOBS}
 	cd $(WORKSPACE)/lava-ci && ./lava-job-runner.py  --section baylibre  --poll $(RESULTS)
+
+alljobs:
+	cd $(WORKSPACE)/lava-ci && ./lava-all-jobs.py  --section baylibre
+	cd $(WORKSPACE)/lava-ci && ./lava-report.py --boot results/all.json --lab lab-baylibre \
+        --token ${POWERCI_TOKEN} --api ${POWERCI_API}
+
 
 ## SUBMIT
 #
