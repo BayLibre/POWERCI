@@ -24,7 +24,8 @@ export LAVA_TOKEN=n4q5ksdmahr600i5aa4h38taobfexu939gg1c53xgz89iuce25cc98pouy06iy
 #export TAG?=mainline/v4.6-rc2-42-g1e1e5ce78ff0
 #export TAG?=mainline/v4.6-rc2-84-g541d8f4d59d7
 #export TAG?=mainline/v4.6-rc3
-export TAG?=mainline/v4.6-rc2-150-g93061f390f10
+#export TAG?=mainline/v4.6-rc2-150-g93061f390f10
+export TAG?=mainline/v4.6-rc3
 #export TAG?=mainline/v4.6-rc1
 
 #export TAG?=next/next-20160401
@@ -110,20 +111,13 @@ $(WORKSPACE)/lava-ci/$(RESULTS): runner
 	-@cp -f $(LAVA_JOBS) archive/$(RESULTS)
 
 
-# sub mit with no poll, and later pull using lava-matching-report.py
+#   ========   NEW FLOW ==========
+
 sumbit:
 	cd $(WORKSPACE)/lava-ci && ./lava-job-runner.py  --section baylibre --jobs ${LAVA_JOBS}
 
-runner:	${LAVA_JOBS}
-	cd $(WORKSPACE)/lava-ci && ./lava-job-runner.py  --section baylibre  --poll $(RESULTS)
-
 matching:
 	cd $(WORKSPACE)/lava-ci && ./lava-matching-report.py  --section baylibre --matching $(subst /,-,$(TAG))
-
-## SUBMIT
-#
-powerci: 
-	cd $(WORKSPACE)/lava-ci && ./lava-report.py --boot results/$(RESULTS) --lab lab-baylibre --token ${POWERCI_TOKEN} --api ${POWERCI_API}
 
 pushboot: 
 	cd $(WORKSPACE)/lava-ci && ./lava-report.py --boot $(WORKSPACE)/lava-ci/results/matching-boots.json --lab lab-baylibre --token ${POWERCI_TOKEN} --api ${POWERCI_API}
@@ -131,8 +125,20 @@ pushboot:
 pushtest:
 	cd $(WORKSPACE)/lava-ci && ./lava-report.py --test $(WORKSPACE)/lava-ci/results/matching-boots.json --lab lab-baylibre --token ${KERNELCI_TOKEN} --api ${KERNELCI_API}
 
+#   ========   OLD FLOW ==========
+
+runner:	${LAVA_JOBS}
+	cd $(WORKSPACE)/lava-ci && ./lava-job-runner.py  --section baylibre  --poll $(RESULTS)
+
+powerci: 
+	cd $(WORKSPACE)/lava-ci && ./lava-report.py --boot results/$(RESULTS) --lab lab-baylibre --token ${POWERCI_TOKEN} --api ${POWERCI_API}
+
 kernelci:
 	cd $(WORKSPACE)/lava-ci && ./lava-report.py --boot results/$(RESULTS) --lab lab-baylibre --token ${KERNELCI_TOKEN} --api ${KERNELCI_API}
+
+alljobs:
+	cd $(WORKSPACE)/lava-ci && ./lava-matching-report.py  --section baylibre
+
 
 ## CLEANUP
 #
