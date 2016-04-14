@@ -44,7 +44,7 @@ export LAVA_SERVER=http://lava.baylibre.com:10080/RPC2/
 
 export LAVA_JOBS?=$(TOPDIR)/jobs-$(subst /,_,$(TAG))
 
-LAB_BAYLIBRE_TARGETS=beaglebone-black
+export LAB_BAYLIBRE_TARGETS?=beaglebone-black
 #LAB_BAYLIBRE_TARGETS_64=juno
 
 POWERCI_TOKEN=4fd6s5f341sd35f41c3ds5f41dc63eQ5D4C1E6R8G54RF16
@@ -138,7 +138,7 @@ kernelci:
 
 alljobs:
 	cd $(WORKSPACE)/lava-ci && ./lava-matching-report.py  --section baylibre
-
+	cd $(WORKSPACE)/lava-ci && ./lava-report.py --boot results/matching-boots.json --lab lab-baylibre --token ${POWERCI_TOKEN} --api ${POWERCI_API}
 
 ## CLEANUP
 #
