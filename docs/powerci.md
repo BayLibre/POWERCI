@@ -1,11 +1,48 @@
-# POWERCI Power Metrics Reporting #
+# POWERCI Power Oriented COntinuous Integration #
 
-This repo contains:
+## Introduction and Modus Operandi  ##
 
-- the lava-ci integration to interact with baylibre LAVA instance and KERNELCI or POWERCI
-- the setup sources (fs-overlay), scripts and documentation to re-create the baylibre LAVA instance from scratch
+### Purpose of PowerCI ###
+
+The purpose of POWERCI is to help Linux kernel maintainers and Embedded Device software (BSP) providers
+to monitor the 'goodness' of kernel commits in regard of power consumption:
+
+- _"Does this change or kernel config worsen the power consumption or energy during a specific test ?"_
+- _"Is this board or SoC more leaky than another with this specific test ?"_
+- _"Which git commit made thing worse (bisect) ?"_
+
+### MO ###
+
+POWERCI is inspired and partly based and contributed to [KernelCI](www.kernelci.org)
+
+the current MO is: 
+
+- check for new build in the KCI storage
+- generate power-related jobs using lava-ci and the power templates.
+- post jobs to LAVA, [lab-baylibre](lava.baylibre.com:10080)
+- pull the job results and post to PowerCI
+
+### GUIs and APIs ###
+
+GUI Features are: 
+
+- search and filter results amongst {board, Arch, Kernel-tree, Kernel-version, Test-case}
+- select a Key Performance Indicator within { energy, power min/max/avg, current min/max, voltage min/max }
+- zoomable/walkable/exportable temporal charts of Power metrics for a given test/job.
+- regression curves over the history of a test job, for the difference metrics.
+
+APIs are (WIP):
+
+- KernelCI's /test API
+- KernelCI's /boot API
+
+## Installation and build ##
+
+This repo contains the setup sources (fs-overlay), scripts and documentation to re-create the baylibre LAVA instance from scratch, as well as the scripts and makefiles for the POWERCI flow, especially lava-ci.
 
 This is meant to being deployed on lava.baylibre.com for the LAVA part and powerci.org for the lava-ci part.
+
+**The README section related to Lava-baylibre creation are now located [here](docs/lava-baylibre-setup.md)**
 
 this is meant to be pulled to /home/powerci, and operated mainly by user powerci.
 
@@ -19,6 +56,9 @@ this is meant to be pulled to /home/powerci, and operated mainly by user powerci
 
 ## Getting started ##
 
+* make help will display the up-to-date flow (may change compared to this doc)
+
+example of complete flow: 
 
 * Edit Makefile, to specify the kernel tag of interest, currently it is picked for the kernelci storage
 * make jobs
@@ -26,16 +66,6 @@ this is meant to be pulled to /home/powerci, and operated mainly by user powerci
 * make powerci
 
 done. 
-
-## Introduction and principle ##
-
-* PowerCI metrics are posted for a "boot" as understood for KernelCI i.e. a test job performed to validate a given git-commit
-* Those metrics are posted to PowerCI using an evolution of the KernelCI API "Sending a Boot Report" see <https://api.kernelci.org/examples.html>
-* Not all labs will provide power metrics for a given "boot"
-* Not all labs are LAVA
-* PowerCI does not keep the complete ganularity of a "boot" session, meaning that unit-tests are not kept. COnsequently, it is LAVA that will allow for this sort of granularity.
-
-**The README section related to Lava-baylibre creation are now located [here](docs/lava-baylibre-setup.md)**
 
 ## "Power Metrics" tab in the frontend
 
