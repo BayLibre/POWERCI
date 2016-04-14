@@ -1,4 +1,4 @@
-# POWERCI Power Oriented COntinuous Integration #
+# POWERCI Power Oriented Continuous Integration - Internals #
 
 ## Introduction and Modus Operandi  ##
 
@@ -36,7 +36,7 @@ APIs are (WIP):
 - KernelCI's /test API
 - KernelCI's /boot API
 
-## Installation and build ##
+## Installation and Usage ##
 
 This repo contains the setup sources (fs-overlay), scripts and documentation to re-create the baylibre LAVA instance from scratch, as well as the scripts and makefiles for the POWERCI flow, especially lava-ci.
 
@@ -46,7 +46,7 @@ This is meant to being deployed on lava.baylibre.com for the LAVA part and power
 
 this is meant to be pulled to /home/powerci, and operated mainly by user powerci.
 
-## Repo init ##
+### Repo init ###
 
 ` mkdir -p /home/powerci/POWERCI && cd POWERCI`
 
@@ -54,7 +54,7 @@ this is meant to be pulled to /home/powerci, and operated mainly by user powerci
 
 ` repo sync`
 
-## Getting started ##
+### Getting started ###
 
 * make help will display the up-to-date flow (may change compared to this doc)
 
@@ -67,25 +67,7 @@ example of complete flow:
 
 done. 
 
-## "Power Metrics" tab in the frontend
-
-PowerCI adds a "[Power Metrics]" tab  <http://www.powerci.org/power/>
-or <http://www.powerci.org:8080/powerci/powers.html>
-
-* each line is a job, like in the [boots] tab <http://www.kernelci.org/boot/>
-
-The job status must be "passed", and the job must have some power metrics.
-
-* col1 : a summary "Description and ID" links back to the matching line in [Boots]
-* col2 : date
-* col3 : Energy (Joule)
-* col4 : Power Average (Watt)
-* col5 : Power Max (W)
-* col6 : Power Min (W)
-* col7 : Voltage Max (Volt)
-* col8 : Current Max (Ampere)
-
-## KernelCI BOOT API Payload changes ##
+## KernelCI POST /boot API implementation ##
 
 the changes described below are located in branch "boot-api-mod"
 in git@github.com:BayLibre/lava-ci.git.
@@ -214,17 +196,59 @@ The fileds are as per the output of iio-capture, see <https://github.com/BayLibr
 }
 ```
 
+## Test cases description ##
+
+Since we are hooking "lava-command" instead of "lava-test-shell" we need to add a dedicated meta-data
+"test.desc" to name the test-case, for instance "MP3 Decode" or "suspend/Resume".
+
+hence in the **POST /boot** payload, we add "test_desc" taking the value of the "test.desc" fron the LAVA result bundle json.
+
+eventually, when using the **POST /test/suite** API we will be using the "test.desc" as the "test_suite_name".
+Test names like "MP3 Decode" will turn into a test_suite_name "MP3-Decode" (slugify)
+
+
+## KernelCI /POST /test/suite implementation ##
+
+the changes described below are located in branch "test-api-baylibre" of git@github.com:BayLibre/lava-ci.git
+
+We post a testsuite/testset/testcase request according to the "canned" schema, e.g.:
+
+```
+{"build_id": "56b9648659b514b7f6e41fac",
+ "lab_name": "lab-baylibre",
+ "name": "lava-command",
+ "test_set": [
+		{
+		 "name": "power-set",
+		 "test_case": [
+			{"status": "pass",
+			 "measurements": [
+				{"units": "mV", "name": "vbus_max", "measure": "5143.75"},
+				{"units": "mJ", "name": "Energy", "measure": "628.53"},
+				{"units": "mW", "name": "power_min", "measure": "1425.00"},
+				{"units": "mW", "name": "power_max", "measure": "1800.00"},
+				{"units": "mW", "name": "power_avg", "measure": "1469.88"},
+				{"units": "mA", "name": "current_min", "measure": "281.00"},
+				{"units": "mA", "name": "current_max", "measure": "348.00"}
+				],
+			 "name": "sleep 10"
+			}
+		    	]
+		   }
+		]
+}
+```
+
 ## LAVA Power recording hooks ##
 
 I am adding host_hook when entering/exitting lava_command_run.
 The hooks are defined in either device.conf file, and in our case,
 will call iio-capture tool.
 
-The iio-capture tool will issue a PN_INFO line in the job log:
+The iio-capture tool will issue LAVA_SIGNAL_TEST_CASE entries in the job log:
 
 ```
-02:46:40 PM DEBUG: Executing on host : '['sh', '-c', u'iio-probe-stop 0']'
-02:46:42 PM INFO: vmax=5187.50 pmax=1225.00 pavg=1113.38 pmin=1075.00 energy=75.17 cmax=234.00 cmin=207.00
+<LAVA_SIGNAL_TESTCASE TEST_CASE_ID=vbus_max RESULT=pass UNITS=mV MEASUREMENT=5178.75
 
 ```
 This line yields the power metrics, and can be parsed by lava-report.py into the JSON payload for the POST command towards PowerCI API.
@@ -236,14 +260,14 @@ The power metrics are created by calling the scripts in SRC/iio-capture:
 * iio-probe-start [probe number]
 * iio-probe-stop [probe number]
 
-See <https://github.com/BayLibre/iio-capture>
+Please visit <https://github.com/BayLibre/iio-capture> for more details.
 
 the scripts and capture app uses the IIO connectivity with baylibre-acme.
 
 see <https://github.com/BayLibre/ACME> and related wikis and READMEs for more info.
 
 
-## LAVA_CI Test plan 'POWER' ##
+## LAVA-CI Test plan 'POWER' ##
 
 I've added a template for a new test plan called power, based on the boot tests plan.
 It will add a basic "lava_command_run" dispatcher action to create power measurements.
