@@ -113,6 +113,9 @@ $(WORKSPACE)/lava-ci/$(RESULTS): runner
 
 #   ========   NEW FLOW ==========
 
+get-latest:
+	@SRC/lava-ci/kci-get-latest.py --section kernelci --token $(KERNELCI_TOKEN)
+
 sumbit:
 	cd $(WORKSPACE)/lava-ci && ./lava-job-runner.py  --section baylibre --jobs ${LAVA_JOBS}
 
@@ -155,6 +158,9 @@ $(HOME)/.lavarc:
 	@echo "stream: "$(BUNDLE_STREAM) >> $@
 	@echo "username: powerci" >> $@
 	@echo "jobs:" >> $@
+	@echo "[kernelci]" >> $@
+	@echo "token: "$(KERNELCI_TOKEN) >> $@
+	@echo "api: "$(KERNELCI_API) >> $@
 
 ## LAVA ADMINISTRATION SECTION, setting up the user ##
 #
