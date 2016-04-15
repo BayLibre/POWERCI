@@ -18,18 +18,12 @@ export LAVA_USER=powerci
 export BUNDLE_STREAM=/anonymous/powerci/
 export LAVA_TOKEN=n4q5ksdmahr600i5aa4h38taobfexu939gg1c53xgz89iuce25cc98pouy06iypqm0kk8l58luu4ukgzsnkf6fef4afma3f38qijw0lcfnxgz4wtdx152j90a6r0hqxu
 
-#export TAG?=mainline/v4.6-rc3
-#export TAG?=mainline/v4.6-rc2-150-g93061f390f10
 export TAG?=mainline/v4.6-rc3
 
 #export TAG?=next/next-20160401
 #export TAG?=broonie-regmap/v4.6-rc1-5-gdcb05f2c7eee
-
 #export TAG?=stable/v4.4.6
 #export TAG?=omap/v4.6-rc1-29-g6de37509e43d
-
-
-#export TAG?=mainline/v4.5-rc4
 
 RESULTS=lab-baylibre-$(subst /,_,$(TAG)).json
 
@@ -107,7 +101,7 @@ $(WORKSPACE)/lava-ci/$(RESULTS): runner
 	-@cp -f $(LAVA_JOBS) archive/$(RESULTS)
 
 
-#   ========   NEW FLOW ==========
+# ======== NEW FLOW ==========
 
 get-latest:
 	@SRC/lava-ci/kci_get_latest.py --token $(KERNELCI_TOKEN) --api $(KERNELCI_API)
@@ -124,7 +118,7 @@ pushboot:
 pushtest:
 	cd $(WORKSPACE)/lava-ci && ./lava-report.py --test $(WORKSPACE)/lava-ci/results/matching-boots.json --lab lab-baylibre --token ${KERNELCI_TOKEN} --api ${KERNELCI_API}
 
-#   ========   OLD FLOW ==========
+# ======== OLD FLOW ==========
 
 runner:	${LAVA_JOBS}
 	cd $(WORKSPACE)/lava-ci && ./lava-job-runner.py  $(LAVA_CONFIG_FULL)  --poll $(RESULTS)
@@ -135,6 +129,8 @@ powerci:
 kernelci:
 	cd $(WORKSPACE)/lava-ci && ./lava-report.py --boot results/$(RESULTS) --lab lab-baylibre --token ${KERNELCI_TOKEN} --api ${KERNELCI_API}
 
+# ==== rebuild the data base ====
+
 alljobs:
 	cd $(WORKSPACE)/lava-ci && ./lava-matching-report.py  --section baylibre
 	cd $(WORKSPACE)/lava-ci && ./lava-report.py --boot results/matching-boots.json --lab lab-baylibre --token ${POWERCI_TOKEN} --api ${POWERCI_API}
@@ -142,8 +138,7 @@ alljobs:
 ## CLEANUP
 #
 clean:
-	-@rm -rf jobs $(LAVA_JOBS)
-	-@rm -rf jetson
+	-@rm -rf jobs-*
 
 ## SETUP
 #
