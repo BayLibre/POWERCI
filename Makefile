@@ -18,15 +18,9 @@ export LAVA_USER=powerci
 export BUNDLE_STREAM=/anonymous/powerci/
 export LAVA_TOKEN=n4q5ksdmahr600i5aa4h38taobfexu939gg1c53xgz89iuce25cc98pouy06iypqm0kk8l58luu4ukgzsnkf6fef4afma3f38qijw0lcfnxgz4wtdx152j90a6r0hqxu
 
-#export TAG?=mainline/v4.5-rc3-23-g2178cbc68f36
-#export TAG?=mainline/v4.5-rc6-8-gf691b77b1fc4
-#export TAG?=mainline/v4.5-rc5
-#export TAG?=mainline/v4.6-rc2-42-g1e1e5ce78ff0
-#export TAG?=mainline/v4.6-rc2-84-g541d8f4d59d7
 #export TAG?=mainline/v4.6-rc3
 #export TAG?=mainline/v4.6-rc2-150-g93061f390f10
 export TAG?=mainline/v4.6-rc3
-#export TAG?=mainline/v4.6-rc1
 
 #export TAG?=next/next-20160401
 #export TAG?=broonie-regmap/v4.6-rc1-5-gdcb05f2c7eee
@@ -57,6 +51,8 @@ KERNELCI_API=http://api.kernelci.org
 KERNELCI_PLAN=boot
 
 export TEST_PLAN?=$(POWERCI_PLAN)
+
+LAVA_CONFIG_FULL= --server $(LAVA_SERVER) --token $(LAVA_TOKEN) --stream $(BUNDLE_STREAM)
 
 help: $(HOME)/.lavarc
 	@clear
@@ -99,11 +95,11 @@ ${LAVA_JOBS}:
 	--plans $(TEST_PLAN) \
 	--targets $(LAB_BAYLIBRE_TARGETS_64) \
 	--arch arm64
-	cd $(WORKSPACE)/lava-ci && ./lava-kernel-ci-job-creator.py --section baylibre \
+	cd $(WORKSPACE)/lava-ci && ./lava-kernel-ci-job-creator.py \
 	http://storage.kernelci.org/$(TAG) \
 	--plans $(TEST_PLAN) \
 	--targets $(LAB_BAYLIBRE_TARGETS) \
-	--arch arm
+	--arch arm --jobs $(LAVA_JOBS)
 
 $(WORKSPACE)/lava-ci/$(RESULTS): runner
 	-@mkdir -p archive
@@ -114,13 +110,13 @@ $(WORKSPACE)/lava-ci/$(RESULTS): runner
 #   ========   NEW FLOW ==========
 
 get-latest:
-	@SRC/lava-ci/kci-get-latest.py --section kernelci --token $(KERNELCI_TOKEN)
+	@SRC/lava-ci/kci_get_latest.py --section kernelci --token $(KERNELCI_TOKEN) --api $(KERNELCI_API)
 
 sumbit:
-	cd $(WORKSPACE)/lava-ci && ./lava-job-runner.py  --section baylibre --jobs ${LAVA_JOBS}
+	cd $(WORKSPACE)/lava-ci && ./lava-job-runner.py  $(LAVA_CONFIG_FULL) --jobs ${LAVA_JOBS}
 
 matching:
-	cd $(WORKSPACE)/lava-ci && ./lava-matching-report.py  --section baylibre --matching $(subst /,-,$(TAG))
+	cd $(WORKSPACE)/lava-ci && ./lava-matching-report.py --lab lab-baylibre --token ${POWERCI_TOKEN} --api ${POWERCI_API}  --matching $(subst /,-,$(TAG))
 
 pushboot: 
 	cd $(WORKSPACE)/lava-ci && ./lava-report.py --boot $(WORKSPACE)/lava-ci/results/matching-boots.json --lab lab-baylibre --token ${POWERCI_TOKEN} --api ${POWERCI_API}
@@ -131,7 +127,7 @@ pushtest:
 #   ========   OLD FLOW ==========
 
 runner:	${LAVA_JOBS}
-	cd $(WORKSPACE)/lava-ci && ./lava-job-runner.py  --section baylibre  --poll $(RESULTS)
+	cd $(WORKSPACE)/lava-ci && ./lava-job-runner.py  $(LAVA_CONFIG_FULL)  --poll $(RESULTS)
 
 powerci: 
 	cd $(WORKSPACE)/lava-ci && ./lava-report.py --boot results/$(RESULTS) --lab lab-baylibre --token ${POWERCI_TOKEN} --api ${POWERCI_API}
