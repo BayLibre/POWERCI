@@ -110,7 +110,7 @@ $(WORKSPACE)/lava-ci/$(RESULTS): runner
 #   ========   NEW FLOW ==========
 
 get-latest:
-	@SRC/lava-ci/kci_get_latest.py --section kernelci --token $(KERNELCI_TOKEN) --api $(KERNELCI_API)
+	@SRC/lava-ci/kci_get_latest.py --token $(KERNELCI_TOKEN) --api $(KERNELCI_API)
 
 sumbit:
 	cd $(WORKSPACE)/lava-ci && ./lava-job-runner.py  $(LAVA_CONFIG_FULL) --jobs ${LAVA_JOBS}
