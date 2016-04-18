@@ -30,21 +30,21 @@ RESULTS=lab-baylibre-$(subst /,_,$(TAG)).json
 export LAVA_SERVER_IP=lava.baylibre.com
 export LAVA_SERVER=http://lava.baylibre.com:10080/RPC2/
 
-export LAVA_JOBS?=$(TOPDIR)/jobs-$(subst /,_,$(TAG))
-
-export LAB_BAYLIBRE_TARGETS?=beaglebone-black
+export LAB_BAYLIBRE_TARGETS?=beaglebone-black panda-es
 #LAB_BAYLIBRE_TARGETS_64=juno
 
 POWERCI_TOKEN=4fd6s5f341sd35f41c3ds5f41dc63eQ5D4C1E6R8G54RF16
 POWERCI_API=http://powerci.org:9999
 
 POWERCI_PLAN=power
+#POWERCI_PLAN=ltp-mm
 
 KERNELCI_TOKEN=bb4d438a-f412-4c65-9f7c-9daefd253ee7
 KERNELCI_API=http://api.kernelci.org
 KERNELCI_PLAN=boot
 
 export TEST_PLAN?=$(POWERCI_PLAN)
+export LAVA_JOBS?=$(TOPDIR)/jobs-$(subst /,_,$(TAG))-$(TEST_PLAN)
 
 LAVA_CONFIG_FULL= --server $(LAVA_SERVER) --token $(LAVA_TOKEN) --stream $(BUNDLE_STREAM)
 
