@@ -33,7 +33,7 @@ export LAVA_SERVER=http://lava.baylibre.com:10080/RPC2/
 export LAB_BAYLIBRE_TARGETS?=beaglebone-black panda-es
 #LAB_BAYLIBRE_TARGETS_64=juno
 
-POWERCI_TOKEN=4fd6s5f341sd35f41c3ds5f41dc63eQ5D4C1E6R8G54RF16
+POWERCI_TOKEN=8rf46sd53c-621f-4a02-80d6-f5ds4qfc15
 POWERCI_API=http://powerci.org:9999
 
 POWERCI_PLAN=power
