@@ -18,45 +18,35 @@ export LAVA_USER=powerci
 export BUNDLE_STREAM=/anonymous/powerci/
 export LAVA_TOKEN=n4q5ksdmahr600i5aa4h38taobfexu939gg1c53xgz89iuce25cc98pouy06iypqm0kk8l58luu4ukgzsnkf6fef4afma3f38qijw0lcfnxgz4wtdx152j90a6r0hqxu
 
-#export TAG?=mainline/v4.5-rc3-23-g2178cbc68f36
-#export TAG?=mainline/v4.5-rc6-8-gf691b77b1fc4
-#export TAG?=mainline/v4.5-rc5
-#export TAG?=mainline/v4.6-rc2-42-g1e1e5ce78ff0
-#export TAG?=mainline/v4.6-rc2-84-g541d8f4d59d7
-#export TAG?=mainline/v4.6-rc3
-#export TAG?=mainline/v4.6-rc2-150-g93061f390f10
 export TAG?=mainline/v4.6-rc3
-#export TAG?=mainline/v4.6-rc1
 
 #export TAG?=next/next-20160401
 #export TAG?=broonie-regmap/v4.6-rc1-5-gdcb05f2c7eee
-
 #export TAG?=stable/v4.4.6
 #export TAG?=omap/v4.6-rc1-29-g6de37509e43d
-
-
-#export TAG?=mainline/v4.5-rc4
 
 RESULTS=lab-baylibre-$(subst /,_,$(TAG)).json
 
 export LAVA_SERVER_IP=lava.baylibre.com
 export LAVA_SERVER=http://lava.baylibre.com:10080/RPC2/
 
-export LAVA_JOBS?=$(TOPDIR)/jobs-$(subst /,_,$(TAG))
-
-LAB_BAYLIBRE_TARGETS=beaglebone-black
+export LAB_BAYLIBRE_TARGETS?=beaglebone-black panda-es
 #LAB_BAYLIBRE_TARGETS_64=juno
 
 POWERCI_TOKEN=4fd6s5f341sd35f41c3ds5f41dc63eQ5D4C1E6R8G54RF16
 POWERCI_API=http://powerci.org:9999
 
 POWERCI_PLAN=power
+#POWERCI_PLAN=ltp-mm
 
 KERNELCI_TOKEN=bb4d438a-f412-4c65-9f7c-9daefd253ee7
 KERNELCI_API=http://api.kernelci.org
 KERNELCI_PLAN=boot
 
 export TEST_PLAN?=$(POWERCI_PLAN)
+export LAVA_JOBS?=$(TOPDIR)/jobs-$(subst /,_,$(TAG))-$(TEST_PLAN)
+
+LAVA_CONFIG_FULL= --server $(LAVA_SERVER) --token $(LAVA_TOKEN) --stream $(BUNDLE_STREAM)
 
 help: $(HOME)/.lavarc
 	@clear
@@ -99,11 +89,11 @@ ${LAVA_JOBS}:
 	--plans $(TEST_PLAN) \
 	--targets $(LAB_BAYLIBRE_TARGETS_64) \
 	--arch arm64
-	cd $(WORKSPACE)/lava-ci && ./lava-kernel-ci-job-creator.py --section baylibre \
+	cd $(WORKSPACE)/lava-ci && ./lava-kernel-ci-job-creator.py \
 	http://storage.kernelci.org/$(TAG) \
 	--plans $(TEST_PLAN) \
 	--targets $(LAB_BAYLIBRE_TARGETS) \
-	--arch arm
+	--arch arm --jobs $(LAVA_JOBS)
 
 $(WORKSPACE)/lava-ci/$(RESULTS): runner
 	-@mkdir -p archive
@@ -111,13 +101,16 @@ $(WORKSPACE)/lava-ci/$(RESULTS): runner
 	-@cp -f $(LAVA_JOBS) archive/$(RESULTS)
 
 
-#   ========   NEW FLOW ==========
+# ======== NEW FLOW ==========
+
+get-latest:
+	@SRC/lava-ci/kci_get_latest.py --token $(KERNELCI_TOKEN) --api $(KERNELCI_API)
 
 sumbit:
-	cd $(WORKSPACE)/lava-ci && ./lava-job-runner.py  --section baylibre --jobs ${LAVA_JOBS}
+	cd $(WORKSPACE)/lava-ci && ./lava-job-runner.py  $(LAVA_CONFIG_FULL) --jobs ${LAVA_JOBS}
 
 matching:
-	cd $(WORKSPACE)/lava-ci && ./lava-matching-report.py  --section baylibre --matching $(subst /,-,$(TAG))
+	cd $(WORKSPACE)/lava-ci && ./lava-matching-report.py --lab lab-baylibre --token ${POWERCI_TOKEN} --api ${POWERCI_API}  --matching $(subst /,-,$(TAG))
 
 pushboot: 
 	cd $(WORKSPACE)/lava-ci && ./lava-report.py --boot $(WORKSPACE)/lava-ci/results/matching-boots.json --lab lab-baylibre --token ${POWERCI_TOKEN} --api ${POWERCI_API}
@@ -125,10 +118,10 @@ pushboot:
 pushtest:
 	cd $(WORKSPACE)/lava-ci && ./lava-report.py --test $(WORKSPACE)/lava-ci/results/matching-boots.json --lab lab-baylibre --token ${KERNELCI_TOKEN} --api ${KERNELCI_API}
 
-#   ========   OLD FLOW ==========
+# ======== OLD FLOW ==========
 
 runner:	${LAVA_JOBS}
-	cd $(WORKSPACE)/lava-ci && ./lava-job-runner.py  --section baylibre  --poll $(RESULTS)
+	cd $(WORKSPACE)/lava-ci && ./lava-job-runner.py  $(LAVA_CONFIG_FULL)  --poll $(RESULTS)
 
 powerci: 
 	cd $(WORKSPACE)/lava-ci && ./lava-report.py --boot results/$(RESULTS) --lab lab-baylibre --token ${POWERCI_TOKEN} --api ${POWERCI_API}
@@ -136,15 +129,16 @@ powerci:
 kernelci:
 	cd $(WORKSPACE)/lava-ci && ./lava-report.py --boot results/$(RESULTS) --lab lab-baylibre --token ${KERNELCI_TOKEN} --api ${KERNELCI_API}
 
+# ==== rebuild the data base ====
+
 alljobs:
 	cd $(WORKSPACE)/lava-ci && ./lava-matching-report.py  --section baylibre
-
+	cd $(WORKSPACE)/lava-ci && ./lava-report.py --boot results/matching-boots.json --lab lab-baylibre --token ${POWERCI_TOKEN} --api ${POWERCI_API}
 
 ## CLEANUP
 #
 clean:
-	-@rm -rf jobs $(LAVA_JOBS)
-	-@rm -rf jetson
+	-@rm -rf jobs-*
 
 ## SETUP
 #
@@ -155,6 +149,9 @@ $(HOME)/.lavarc:
 	@echo "stream: "$(BUNDLE_STREAM) >> $@
 	@echo "username: powerci" >> $@
 	@echo "jobs:" >> $@
+	@echo "[kernelci]" >> $@
+	@echo "token: "$(KERNELCI_TOKEN) >> $@
+	@echo "api: "$(KERNELCI_API) >> $@
 
 ## LAVA ADMINISTRATION SECTION, setting up the user ##
 #
