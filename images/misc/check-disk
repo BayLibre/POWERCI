@@ -1,0 +1,16 @@
+#!/bin/bash
+
+if [ -z "$1" ]
+then
+ echo "usage: $0 /dev/sdX"
+fi
+
+size=$(df -k $1 | tail -1 | awk '{print $2}')
+
+if [ "$size" -gt "170000000" ]
+then
+        echo $1 "has suspiscious size of" $size "bytes"
+	echo "refusing to process"
+        exit -1
+fi
+
