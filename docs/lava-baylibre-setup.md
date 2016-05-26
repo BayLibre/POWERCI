@@ -31,7 +31,7 @@ Make sure to create an ssh id_rsa.pub key for the powerci user, and add it to th
 
 ` mkdir -p /home/powerci/POWERCI && cd POWERCI`
 
-` repo init -u git@github.com:mtitinger/powerci-manifests.git`
+` repo init -u git@github.com:BayLibre/manifests.git -m powerci/default.xml`
 
 ` repo sync`
 
