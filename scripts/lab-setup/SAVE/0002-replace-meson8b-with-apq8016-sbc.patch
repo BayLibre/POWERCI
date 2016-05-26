@@ -1,0 +1,27 @@
+From 03de833be75e2b03628bd5f7341a7968e0779f17 Mon Sep 17 00:00:00 2001
+From: Marc Titinger <mtitinger@baylibre.com>
+Date: Thu, 31 Mar 2016 12:14:35 +0200
+Subject: [PATCH 2/3] replace meson8b with apq8016-sbc
+
+Signed-off-by: Marc Titinger <mtitinger@baylibre.com>
+---
+ fs-overlay/etc/ser2net.conf | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/fs-overlay/etc/ser2net.conf b/fs-overlay/etc/ser2net.conf
+index 0d94c1a..40b7b02 100644
+--- a/fs-overlay/etc/ser2net.conf
++++ b/fs-overlay/etc/ser2net.conf
+@@ -4,7 +4,8 @@ BANNER:dut0:\r\nbeaglebone-black_0\r\n\r\n
+ BANNER:dut1:\r\npanda-es_0\r\n\r\n
+ BANNER:dut2:\r\njetson-tk1_0\r\n\r\n
+ BANNER:dut3:\r\nrpi-zero_0\r\n\r\n
+-BANNER:dut4:\r\nmeson8b-odroidc1_0\r\n\r\n
++#BANNER:dut4:\r\nmeson8b-odroidc1_0\r\n\r\n
++BANNER:dut4:\r\napq8016-sbc0\r\n\r\n
+ BANNER:dut5:\r\njuno_0\r\n\r\n
+ BANNER:acme:\r\nlab-baylibre-acme.local\r\n\r\n
+ 
+-- 
+2.5.0
+

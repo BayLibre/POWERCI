@@ -169,8 +169,8 @@ def main(dt, name, options):
             print ("Unable to parse %s as a port number" % options.pduport)
             exit(1)
         if options.acmecmd:
-            config['hard_reset_command'] = str(options.acmecmd) + " dut-hard-reset " + str(options.pduport) + " &"
-            config['power_off_cmd'] = str(options.acmecmd) + " dut-switch-off " + str(options.pduport) + " &"
+#            config['hard_reset_command'] = str(options.acmecmd) + " dut-hard-reset " + str(options.pduport) + " &"
+#            config['power_off_cmd'] = str(options.acmecmd) + " dut-switch-off " + str(options.pduport) + " &"
             config['host_hook_enter_command'] = "iio-probe-start " + str(int(options.pduport)-1)
             config['host_hook_exit_command'] = "iio-probe-stop " + str(int(options.pduport)-1)
         else:
