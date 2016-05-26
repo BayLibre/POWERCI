@@ -192,7 +192,8 @@ def main(dt, name, options):
             exit(1)
         config['connection_command'] = "telnet localhost %d" % options.telnetport
     else:
-        print("Skipping connection_command for %s" % name)
+        config['connection_command'] = "conmux-console %s" % name
+    
     template = [template_device_type()]
     template[0]['pk'] = dt
     template.append(template_device())
