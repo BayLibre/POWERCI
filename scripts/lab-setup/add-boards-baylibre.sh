@@ -10,9 +10,9 @@ ls -1 /etc/conmux/*.cf
 sudo ./add_baylibre_device.py beaglebone-black am335x-boneblack  -p 1  -a "$ACME_CMD"
 sudo ./add_baylibre_device.py panda-es omap4-panda-es -p 2 -a "$ACME_CMD"
 sudo ./add_baylibre_device.py meson8b-odroidc1 meson8b-odroidc1 -p 4 -a "$ACME_CMD"
+sudo ./add_baylibre_device.py meson-gxbb-p200 meson-gxbb-p200 -p 6 -a "$ACME_CMD"
 
 # TODO sudo ./add_baylibre_device.py meson-gxbb-odroidc2 meson-gxbb-odroidc2 -p 4 -a "$ACME_CMD"
-# TODO sudo ./add_baylibre_device.py meson-gxbb-p200 meson-gxbb-p200 -p 4 -a "$ACME_CMD"
 # TODO sudo ./add_baylibre_device.py r8a7795-salvator-x r8a7795-salvator-x -p 5 -a "$ACME_CMD"
 
 # RETIRED sudo ./add_baylibre_device.py rpi-zero rpi-zero_0 -p 3 -a "$ACME_CMD"
