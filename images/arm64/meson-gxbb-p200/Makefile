@@ -1,14 +1,15 @@
 TOPLEVEL ?= $(CURDIR)
 COMMON ?= ~/COMMON
+TARGET ?= meson-gxbb-p200
 
 export ARCH=arm64
 export KBUILD:=${TOPLEVEL}/build/linux
 export CROSS_COMPILE=aarch64-linux-gnu-
 export INSTALL_MOD_PATH:=$(KBUILD)/rootfs
 
-TAG ?= "master"
-
-GITCLONE = git clone --depth 1 --single-branch -b $(TAG)
+GIT_TAG ?= "master"
+GIT_URL ?= git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
+GITCLONE = git clone --depth 1 --single-branch -b $(GIT_TAG)
 
 all: vmlinux modules
 	make -C $(KBUILD) modules_install
@@ -17,13 +18,13 @@ all: vmlinux modules
 defconfig:
 $(KBUILD)/.config: $(COMMON)/linux
 	mkdir -p $(KBUILD)
-	make -C $(COMMON)/linux O=$(KBUILD) ARCH=arm64 defconfig
+	make -C $(COMMON)/linux O=$(KBUILD) defconfig
 
 vmlinux:	$(KBUILD)/.config
 	make -C $(KBUILD) vmlinux dtbs -j12
 	cp $(KBUILD)/vmlinux .
 	$(CROSS_COMPILE)strip vmlinux
-	cp `find $(KBUILD) -name meson-gxbb-p200.dtb` . 
+	cp `find $(KBUILD) -name $(TARGET).dtb` . 
 
 modules:
 	mkdir -p $(INSTALL_MOD_PATH)
@@ -37,4 +38,4 @@ clean:
 
 $(COMMON)/linux:
 	mkdir -p $(COMMON)
-	cd $(COMMON) && $(GITCLONE) git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git linux
+	cd $(COMMON) && $(GITCLONE) $(GITURL) linux
