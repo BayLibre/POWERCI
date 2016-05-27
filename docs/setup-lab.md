@@ -7,30 +7,15 @@ As per <http://127.0.1.1/static/docs/known-devices.html>
   * check that the device-type exists in lava-dispatcher/device-types
   * use the helper to add each board
   * the ser2net port must be allocated, and match ser2net.conf (option -t)
-  * the pdudaemon port ditto (option -p)
-  * option -b will create the lab health bundle /anonymous/lab-health
+  * EDIT: we are currenty using conmux, checkout /etc/conmux for supported boards. 
+  * the pdudaemon port ditto (option -p) when applicable
+  * option -b will create the lab health bundle /anonymous/lab-health USE THE FIRST TIME ONLY
 
 ### Baylibre PowerCI Lab setup script ##
 
-run the script located under:
+see the script located under as examples:
 
 > POWERCI/scripts/lab-setup/add-boards-baylibre.sh
-
-i.e (see actual file): 
-```
-	sudo /usr/share/lava-server/add_device.py kvm kvm01
-	sudo /usr/share/lava-server/add_device.py beaglebone-black dut0-bbb -t 2000 -p 100 -b
-	sudo /usr/share/lava-server/add_device.py beaglebone-black dut1-bbb -t 2001 -p 101
-	sudo /usr/share/lava-server/add_device.py juno dut2-juno -t 2010 -p 110
-```
-
-remember restarting those services
-
-```
-	sudo /etc/init.d/ser2net restart
-	sudo service lava-server restart
-	sudo service apache2 restart
-```
 
 ### Healthcheck jobs ###
 
