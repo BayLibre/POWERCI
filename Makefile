@@ -18,7 +18,7 @@ export LAVA_USER=powerci
 export BUNDLE_STREAM=/anonymous/powerci/
 export LAVA_TOKEN=n4q5ksdmahr600i5aa4h38taobfexu939gg1c53xgz89iuce25cc98pouy06iypqm0kk8l58luu4ukgzsnkf6fef4afma3f38qijw0lcfnxgz4wtdx152j90a6r0hqxu
 
-export TAG?=mainline/v4.6-rc3
+export TAG?=mainline/v4.6-rc7
 
 #export TAG?=next/next-20160401
 #export TAG?=broonie-regmap/v4.6-rc1-5-gdcb05f2c7eee
@@ -106,11 +106,11 @@ $(WORKSPACE)/lava-ci/$(RESULTS): runner
 get-latest:
 	@SRC/lava-ci/kci_get_latest.py --token $(KERNELCI_TOKEN) --api $(KERNELCI_API)
 
-sumbit:
+submit:
 	cd $(WORKSPACE)/lava-ci && ./lava-job-runner.py  $(LAVA_CONFIG_FULL) --jobs ${LAVA_JOBS}
 
 matching:
-	cd $(WORKSPACE)/lava-ci && ./lava-matching-report.py --lab lab-baylibre --token ${POWERCI_TOKEN} --api ${POWERCI_API}  --matching $(subst /,-,$(TAG))
+	cd $(WORKSPACE)/lava-ci && ./lava-matching-report.py --section baylibre --matching $(subst /,-,$(TAG))
 
 pushboot: 
 	cd $(WORKSPACE)/lava-ci && ./lava-report.py --boot $(WORKSPACE)/lava-ci/results/matching-boots.json --lab lab-baylibre --token ${POWERCI_TOKEN} --api ${POWERCI_API}
