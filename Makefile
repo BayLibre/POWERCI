@@ -33,8 +33,13 @@ export LAVA_SERVER=http://lava.baylibre.com:10080/RPC2/
 export LAB_BAYLIBRE_TARGETS?=beaglebone-black panda-es
 #LAB_BAYLIBRE_TARGETS_64=juno
 
-POWERCI_TOKEN=8rf46sd53c-621f-4a02-80d6-f5ds4qfc15
-POWERCI_API=http://powerci.org:9999
+## API PHP ##
+#POWERCI_TOKEN=8rf46sd53c-621f-4a02-80d6-f5ds4qfc15
+#POWERCI_API=http://powerci.org:9999
+
+## API Python ##
+POWERCI_TOKEN=3caf9787-2521-4276-ad2e-af2c64d19707
+POWERCI_API=http://powerci.org:8888
 
 POWERCI_PLAN=power
 #POWERCI_PLAN=ltp-mm
@@ -116,7 +121,7 @@ pushboot:
 	cd $(WORKSPACE)/lava-ci && ./lava-report.py --boot $(WORKSPACE)/lava-ci/results/matching-boots.json --lab lab-baylibre --token ${POWERCI_TOKEN} --api ${POWERCI_API}
 
 pushtest:
-	cd $(WORKSPACE)/lava-ci && ./lava-report.py --test $(WORKSPACE)/lava-ci/results/matching-boots.json --lab lab-baylibre --token ${KERNELCI_TOKEN} --api ${KERNELCI_API}
+	cd $(WORKSPACE)/lava-ci && ./lava-report.py --test $(WORKSPACE)/lava-ci/results/matching-boots.json --lab lab-baylibre --token ${POWERCI_TOKEN} --api ${POWERCI_API}
 
 # ======== OLD FLOW ==========
 
