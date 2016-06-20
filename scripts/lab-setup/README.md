@@ -6,10 +6,12 @@ see the script located under :
 > POWERCI/scripts/lab-setup
 
 Copy POWERCI/scripts/lab-setup/cu-loop script under /usr/local/bin
+
 ``` testlava@lava-demo:~/POWERCI/scripts/lab-setup$ sudo cp cu-loop /usr/local/bin/.
 ```
 
 > POWERCI/scripts/lab-setup/add-boards-baylibre.sh
+
 ## Howto populate the Devices ##
 
 As per <http://127.0.1.1/static/docs/known-devices.html>
@@ -17,6 +19,7 @@ As per <http://127.0.1.1/static/docs/known-devices.html>
   * check that the device-type exists in lava-dispatcher/device-types
   * launch the script create-boards-conf.sh and answer to the questions
     the script will create the /etc/conmux/<board>.cf as well as /etc/lava-dispatcher/devices/<board>.conf
+
 ``` testlava@lava-demo:~/POWERCI/scripts/lab-setup$ sudo ./create-boards-conf.sh
 [sudo] password for testlava: 
 ACME address set to:
@@ -46,6 +49,7 @@ following commands:
 if acme is integrated into pdudaemon, then setup lavapdu.conf with 'pdu' as acme type
 
 ```
+
   * the pdudaemon port ditto (option -p) when applicable
   * option -b will create the lab health bundle /anonymous/lab-health USE THE FIRST TIME ONLY
 
@@ -58,18 +62,25 @@ After previous step you should have:
   * cu-loop script under /usr/local/bin
   * check that your boards are detected as usb device
   * link acme and board to their devices.
+
 ```ln -s /dev/ttyUSB0 /dev/acme
 ln -s /dev/ttyUSB1 /dev/<your board>
 ```
+
   * assuming your hostname is lava-demo (result of command uname -n), Add lava-demo.local to /etc/hosts like:
+
 ```127.0.0.1 localhost
 127.0.1.1 lava-demo lava-demo.local
 ```
+
   *stop then start conmux
+
 ```sudo stop conmux
 sudo start conmux
 ```
-   check it via:
+
+   *check conmux starts well:
+
 ```$ ps -aux | grep conmux
 root      1360  0.0  0.0  37060  3588 ?        Ss   14:22   0:00 /usr/bin/perl /usr/sbin/conmux-registry 63000 /var/run/conmux-registry
 root      1550  0.0  0.0  55136  4704 ?        Ss   14:22   0:00 /usr/bin/perl /usr/sbin/conmux /etc/conmux/acme.cf
@@ -81,7 +92,9 @@ conmux-re 1360            root    3u  IPv4  12574      0t0  TCP *:63000 (LISTEN)
 conmux    1550            root    3u  IPv4  12591      0t0  TCP *:42514 (LISTEN)
 conmux    1553            root    3u  IPv4  12659      0t0  TCP *:41040 (LISTEN)
 ```
+
   *check connection to acme and <your board>:
+
 ```$ conmux-console acme
 Connected to acme console [channel connected] (~$quit to exit)
 
