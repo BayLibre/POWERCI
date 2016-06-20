@@ -53,15 +53,15 @@ if acme is integrated into pdudaemon, then setup lavapdu.conf with 'pdu' as acme
 
 After previous step you should have:
 
-  * <your board>.conf under /etc/lava-dispatcher/devices/
-  * <your board>.cf under /etc/conmux/
+  * [your board].conf under /etc/lava-dispatcher/devices/
+  * [your board].cf under /etc/conmux/
   * cu-loop script under /usr/local/bin
   * check that your boards are detected as usb device
   * link acme and board to their devices.
 
 ```
-ln -s /dev/ttyUSB0 /dev/acme
-ln -s /dev/ttyUSB1 /dev/<your board>
+$ ln -s /dev/ttyUSB0 /dev/acme
+$ ln -s /dev/ttyUSB1 /dev/<your board>
 ```
 
   * assuming your hostname is lava-demo (result of command uname -n), Add lava-demo.local to /etc/hosts like:
@@ -74,17 +74,17 @@ ln -s /dev/ttyUSB1 /dev/<your board>
   * stop then start conmux
 
 ```
-sudo stop conmux
-sudo start conmux
+$ sudo stop conmux
+$ sudo start conmux
 ```
 
    * check conmux starts well:
 
 ```
 $ ps -aux | grep conmux
-root      1360  0.0  0.0  37060  3588 ?        Ss   14:22   0:00 /usr/bin/perl /usr/sbin/conmux-registry 63000 /var/run/conmux-registry
-root      1550  0.0  0.0  55136  4704 ?        Ss   14:22   0:00 /usr/bin/perl /usr/sbin/conmux /etc/conmux/acme.cf
-root      1553  0.0  0.0  55140  4848 ?        Ss   14:22   0:00 /usr/bin/perl /usr/sbin/conmux /etc/conmux/am335x-boneblack.cf
+root 1360 0.0 0.0 37060 3588 ? Ss 14:22 0:00 /usr/bin/perl /usr/sbin/conmux-registry 63000 /var/run/conmux-registry
+root 1550 0.0 0.0 55136 4704 ? Ss 14:22 0:00 /usr/bin/perl /usr/sbin/conmux /etc/conmux/acme.cf
+root 1553 0.0 0.0 55140 4848 ? Ss 14:22 0:00 /usr/bin/perl /usr/sbin/conmux /etc/conmux/am335x-boneblack.cf
 testlava 10962  0.0  0.0  15952  2260 pts/0    S+   17:24   0:00 grep --color=auto conmux
 $ sudo lsof -nP -i | grep conmux
 [sudo] password for testlava: 
@@ -93,7 +93,7 @@ conmux    1550            root    3u  IPv4  12591      0t0  TCP *:42514 (LISTEN)
 conmux    1553            root    3u  IPv4  12659      0t0  TCP *:41040 (LISTEN)
 ```
 
-  * check connection to acme and <your board>:
+  * check connection to acme and [your board]:
 
 ```
 $ conmux-console acme
