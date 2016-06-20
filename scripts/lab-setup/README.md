@@ -1,16 +1,11 @@
 # LAB Setup #
 
-### Baylibre PowerCI Lab setup script ##
+## Baylibre PowerCI Lab setup script ##
 
-see the script located under :
+see the scripts located under :
 > POWERCI/scripts/lab-setup
 
 Copy POWERCI/scripts/lab-setup/cu-loop script under /usr/local/bin
-
-``` testlava@lava-demo:~/POWERCI/scripts/lab-setup$ sudo cp cu-loop /usr/local/bin/.
-```
-
-> POWERCI/scripts/lab-setup/add-boards-baylibre.sh
 
 ## Howto populate the Devices ##
 
@@ -20,7 +15,8 @@ As per <http://127.0.1.1/static/docs/known-devices.html>
   * launch the script create-boards-conf.sh and answer to the questions
     the script will create the /etc/conmux/<board>.cf as well as /etc/lava-dispatcher/devices/<board>.conf
 
-``` testlava@lava-demo:~/POWERCI/scripts/lab-setup$ sudo ./create-boards-conf.sh
+```
+$ sudo ./create-boards-conf.sh
 [sudo] password for testlava: 
 ACME address set to:
 root@baylibre-acme-fab.local
@@ -53,7 +49,7 @@ if acme is integrated into pdudaemon, then setup lavapdu.conf with 'pdu' as acme
   * the pdudaemon port ditto (option -p) when applicable
   * option -b will create the lab health bundle /anonymous/lab-health USE THE FIRST TIME ONLY
 
-### Setup Conmux ##
+## Setup Conmux ##
 
 After previous step you should have:
 
@@ -63,25 +59,29 @@ After previous step you should have:
   * check that your boards are detected as usb device
   * link acme and board to their devices.
 
-```ln -s /dev/ttyUSB0 /dev/acme
+```
+ln -s /dev/ttyUSB0 /dev/acme
 ln -s /dev/ttyUSB1 /dev/<your board>
 ```
 
   * assuming your hostname is lava-demo (result of command uname -n), Add lava-demo.local to /etc/hosts like:
 
-```127.0.0.1 localhost
+```
+127.0.0.1 localhost
 127.0.1.1 lava-demo lava-demo.local
 ```
 
-  *stop then start conmux
+  * stop then start conmux
 
-```sudo stop conmux
+```
+sudo stop conmux
 sudo start conmux
 ```
 
-   *check conmux starts well:
+   * check conmux starts well:
 
-```$ ps -aux | grep conmux
+```
+$ ps -aux | grep conmux
 root      1360  0.0  0.0  37060  3588 ?        Ss   14:22   0:00 /usr/bin/perl /usr/sbin/conmux-registry 63000 /var/run/conmux-registry
 root      1550  0.0  0.0  55136  4704 ?        Ss   14:22   0:00 /usr/bin/perl /usr/sbin/conmux /etc/conmux/acme.cf
 root      1553  0.0  0.0  55140  4848 ?        Ss   14:22   0:00 /usr/bin/perl /usr/sbin/conmux /etc/conmux/am335x-boneblack.cf
@@ -93,9 +93,10 @@ conmux    1550            root    3u  IPv4  12591      0t0  TCP *:42514 (LISTEN)
 conmux    1553            root    3u  IPv4  12659      0t0  TCP *:41040 (LISTEN)
 ```
 
-  *check connection to acme and <your board>:
+  * check connection to acme and <your board>:
 
-```$ conmux-console acme
+```
+$ conmux-console acme
 Connected to acme console [channel connected] (~$quit to exit)
 
 # uname -a
