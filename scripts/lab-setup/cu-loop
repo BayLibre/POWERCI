@@ -1,0 +1,9 @@
+#!/bin/sh
+DEV=$1
+BAUD=${2:-115200}
+
+while true; do
+#  cu -l $DEV -s $BAUD --parity=none --nostop dir 2>/dev/null
+  test -e $DEV && cu -l $DEV -s $BAUD --parity=none --nostop dir
+  sleep 0.2
+done
