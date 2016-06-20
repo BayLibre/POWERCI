@@ -4,10 +4,13 @@ RED=`tput setaf 1`
 BLUE=`tput setaf 4`
 NC=`tput sgr0`
 
+DEFAULT_ACME_ADDR="root@baylibre-acme-fab.local"
+DEFAULT_BOARD_LIST="am335x-boneblack:beaglebone-black:1:115200"
+
 #check if env var ACME_ADDR exist or not
 #Enter it if not
 if [ -z "`printenv | grep ACME_ADDR`" ];then
-    ACME_ADDR="root@baylibre-acme-fab.local"
+    ACME_ADDR=${DEFAULT_ACME_ADDR}
 fi
 
 echo "ACME address set to:"
@@ -15,16 +18,25 @@ echo ${ACME_ADDR}
 echo -l "Is it correct (Y|n): "
 read r
 if [ "$r" == "n" ];then
-    echo -l "Please enter your ACME adress: "
+    echo -n "Please enter your ACME adress: "
     read ACME_ADDR
 fi
+export ACME_ADDR=${ACME_ADDR}
 
 #Board connected to the ACME listed as:
-#<device name>:<device type>:<acme port>[:baud rate]...[ <dev nameN>:<device type>:<acme portN>[:<baud rate>]]
+#<device name>:<device type>:<acme port>[:baud rate]...[<space><dev nameN>:<device type>:<acme portN>[:<baud rate>]]
 #<> variable
 #[] optionnal element
 #example:
-BOARDS="am335x-boneblack:beaglebone-black:1"
+echo "BOARDS list set to:"
+echo ${DEFAULT_BOARD_LIST}
+echo -l "Is it correct (Y|n): "
+read r
+if [ "$r" == "n" ];then
+    echo -n "Please enter your BOARD list: "
+    read ACME_ADDR
+fi
+BOARDS=${DEFAULT_BOARD_LIST}
 
 #define the ttyUSB connected
 echo "List of ttyUSB connected"
