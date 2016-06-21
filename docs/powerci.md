@@ -46,14 +46,6 @@ This is meant to being deployed on lava.baylibre.com for the LAVA part and power
 
 this is meant to be pulled to /home/powerci, and operated mainly by user powerci.
 
-### Repo init ###
-
-` mkdir -p /home/powerci/POWERCI && cd POWERCI`
-
-` repo init -u git@github.com:baylibre/manifests.git -m powerci/default.xml`
-
-` repo sync`
-
 ### Getting started ###
 
 * make help will display the up-to-date flow (may change compared to this doc)
