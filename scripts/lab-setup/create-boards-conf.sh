@@ -7,51 +7,95 @@ NC=`tput sgr0`
 DEFAULT_ACME_ADDR="root@baylibre-acme-fab.local"
 DEFAULT_BOARD_LIST="am335x-boneblack:beaglebone-black:1:115200"
 
-#check if env var ACME_ADDR exist or not
-#Enter it if not
-if [ -z "`printenv | grep ACME_ADDR`" ];then
-    ACME_ADDR=${DEFAULT_ACME_ADDR}
-fi
+###################################################################################
+## check if environment variable ACME_ADDR exist or not
+#  Purpose a default ACME_ADDR to user that shall validate or enter a new one
+#  Put the validated ACME_ADDR in /etc/profile.d/lava_lab.sh that will contains some setup dedicated env variable
+###################################################################################
+acme_addr()
+{
+    if [ -z "`printenv | grep ACME_ADDR`" ];then
+        ACME_ADDR=${DEFAULT_ACME_ADDR}
+    fi
+    
+    echo "ACME address set to:"
+    echo "${BLUE}${ACME_ADDR}${NC}"
+    echo -n "Is it correct (Y|n): "
+    read r
+    if [ "$r" == "n" ];then
+        echo -n "Please enter your ACME adress: "
+        read ACME_ADDR
+    fi
+    echo "ACME_ADDR=${ACME_ADDR}" >> /etc/profile.d/lava_lab.sh 
+}
 
-echo "ACME address set to:"
-echo ${ACME_ADDR}
-echo -l "Is it correct (Y|n): "
-read r
-if [ "$r" == "n" ];then
-    echo -n "Please enter your ACME adress: "
-    read ACME_ADDR
-fi
-export ACME_ADDR=${ACME_ADDR}
+###################################################################################
+## list boards connected to ACME
+#  Purpose a default BOARD_LIST to user that shall validate or enter a new one
+#  Board are listed like:
+#      <device name>:<device type>:<acme port>[:baud rate]...[<space><dev nameN>:<device type>:<acme portN>[:<baud rate>]]
+#      <> variable
+#      [] optionnal element
+###################################################################################
+board_list()
+{
+    echo "BOARDS list set to:"
+    
+    echo "NAME TYPE ACME_PORT BAUD_RATE" > /tmp/lava_board
+    for b in ${DEFAULT_BOARD_LIST}; do
+        IFS=':' read -a arr <<< "$b"
 
-#Board connected to the ACME listed as:
-#<device name>:<device type>:<acme port>[:baud rate]...[<space><dev nameN>:<device type>:<acme portN>[:<baud rate>]]
-#<> variable
-#[] optionnal element
-#example:
-echo "BOARDS list set to:"
-echo ${DEFAULT_BOARD_LIST}
-echo -l "Is it correct (Y|n): "
-read r
-if [ "$r" == "n" ];then
-    echo -n "Please enter your BOARD list: "
-    read ACME_ADDR
-fi
-BOARDS=${DEFAULT_BOARD_LIST}
+        baud=${arr[3]}
+        IFS=$OIFS
+        if [ -z $baud ]; then
+            baud=115200
+        fi
 
-#define the ttyUSB connected
-echo "List of ttyUSB connected"
-echo "${BLUE}/dev/ttyUSB connected:${NC}"
-for sysdevpath in $(find /sys/bus/usb/devices/usb*/ -name dev | grep ttyUSB); do
-    (
+        echo "${arr[0]} ${arr[1]} ${arr[2]} ${baud}" >> /tmp/lava_board
+    done
+    echo $BLUE
+    cat /tmp/lava_board | column -t
+    echo $NC
+
+    BOARDS=${DEFAULT_BOARD_LIST}
+    echo -n "Is it correct (Y|n): "
+    read r
+    if [ "$r" == "n" ];then
+        echo -n "Please enter your BOARD list formatted like <name>:<type>:<acme_port>[:<baud_rate>] "
+        read BOARDS
+    fi
+}
+
+###################################################################################
+## List usb connected
+###################################################################################
+usb_connected()
+{
+    SAVE_IFS=$IFS
+    IFS=$'\n'
+    echo "List of ttyUSB connected"
+    echo "/dev/ttyUSB connected:"
+    for sysdevpath in `find /sys/bus/usb/devices/usb*/ -name dev | grep ttyUSB`; do
         syspath="${sysdevpath%/dev}"
         devname="$(udevadm info -q name -p $syspath)"
         [[ "$devname" == "bus/"* ]] && continue
         eval "$(udevadm info -q property --export -p $syspath)"
         [[ -z "$ID_SERIAL" ]] && continue
-        echo "/dev/$devname - $ID_SERIAL"
-    )
-done
-echo ""
+        echo "${BLUE}/dev/$devname - $ID_SERIAL${NC}"
+    done
+    echo ""
+    IFS=$SAVE_IFS
+}
+
+###################################################################################
+## Scripts starts here
+###################################################################################
+
+acme_addr
+
+board_list
+
+usb_connected
 
 #clean previous config files
 echo "Cleaning /etc/conmux and /etc/lava-dispatcher/devices"
@@ -79,11 +123,11 @@ listener acme
 application console 'acme console' 'exec sg dialout "/usr/local/bin/cu-loop /dev/acme 115200"'
 EOF
 
-
 #for each boards in the list
-first_time=1
-for b in ${BOARDS}; do
-    IFS=':' read -a arr <<< "$b"
+SAVE_IFS=$IFS
+IFS=$'\n'
+for b in `cat /tmp/lava_board | tail -n+2`; do
+    IFS=' ' read -a arr <<< "$b"
     board=${arr[0]}
     type=${arr[1]}
     port=${arr[2]}
@@ -109,19 +153,18 @@ EOF
 
 
     echo "Create lava conf of ${board}"
-    # option -b : DO THE FIRST TIME TO CREATE THE BUNDLE
-    #if [ ${first_time} -eq 1 ]; then
-    #    sudo ./add_baylibre_device.py ${type} ${board}  -p ${port}  -a "ssh -t $ACME_ADDR" -b
-    #    first_time=0
-    #else
-        sudo ./add_baylibre_device.py ${type} ${board}  -p ${port}  -a "ssh -t $ACME_ADDR" 
-    #fi
+    sudo ./add_baylibre_device.py ${type} ${board}  -p ${port}  -a "ssh -t $ACME_ADDR" -b
+
+    if [ -z `cat /etc/lava-dispatcher/devices/${board}.conf | grep hard_reset_command` ]; then
+        echo "hard_reset_command = ssh -t $ACME_ADDR dut-hard-reset ${port}" >> /etc/lava-dispatcher/devices/${board}.conf
+    fi
+    if [ -z `cat /etc/lava-dispatcher/devices/${board}.conf | grep power_off_cmd` ]; then
+        echo "power_off_cmd = ssh -t $ACME_ADDR dut-switch-off ${port}" >> /etc/lava-dispatcher/devices/${board}.conf
+    fi
 
 done
-
-echo "if acme is not yet integrated as a pdudaemon device, you may have to manually set the"
-echo "following commands:"
-echo " hard_reset_command = ssh -t $ACME_ADDR dut-hard-reset 1"
-echo " power_off_cmd = ssh -t $ACME_ADDR dut-switch-off 1"
+IFS=$SAVE_IFS
 
 echo "if acme is integrated into pdudaemon, then setup lavapdu.conf with 'pdu' as acme type"
+
+

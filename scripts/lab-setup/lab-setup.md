@@ -46,9 +46,6 @@ if acme is integrated into pdudaemon, then setup lavapdu.conf with 'pdu' as acme
 
 ```
 
-  * the pdudaemon port ditto (option -p) when applicable
-  * option -b will create the lab health bundle /anonymous/lab-health USE THE FIRST TIME ONLY
-
 ## Setup Conmux ##
 
 After previous step you should have:
