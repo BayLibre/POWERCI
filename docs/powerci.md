@@ -42,7 +42,7 @@ This repo contains the setup sources (fs-overlay), scripts and documentation to 
 
 This is meant to being deployed on lava.baylibre.com for the LAVA part and powerci.org for the lava-ci part.
 
-**The README section related to Lava-baylibre creation are now located [here](docs/lava-baylibre-setup.md)**
+**The README section related to Lava-baylibre creation are now located [here](lava-baylibre-setup.md)**
 
 this is meant to be pulled to /home/powerci, and operated mainly by user powerci.
 

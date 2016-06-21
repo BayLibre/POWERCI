@@ -6,7 +6,7 @@ This is done with script:
 
 > POWERCI/scripts/lab-setup/create-boards-conf.sh
 
-**The README section related to device creation is now located [here](scripts/lab-setup/lab-setup.md)**
+**The README section related to device creation is now located [here](../scripts/lab-setup/lab-setup.md)**
 
 ### Healthcheck jobs ###
 
