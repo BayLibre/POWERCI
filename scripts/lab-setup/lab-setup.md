@@ -5,103 +5,82 @@
 see the scripts located under :
 > POWERCI/scripts/lab-setup
 
-Copy POWERCI/scripts/lab-setup/cu-loop script under /usr/local/bin
-
-## Howto populate the Devices ##
+## Setup Conmux ##
 
 As per <http://127.0.1.1/static/docs/known-devices.html>
 
-  * check that the device-type exists in lava-dispatcher/device-types
-  * launch the script create-boards-conf.sh and answer to the questions
-    the script will create the /etc/conmux/<board>.cf as well as /etc/lava-dispatcher/devices/<board>.conf
+Check that the device-type exists in lava-dispatcher/device-types
 
-```
-$ sudo ./create-boards-conf.sh
-[sudo] password for testlava: 
-ACME address set to:
-root@baylibre-acme-fab.local
--l Is it correct (Y|n): 
-
-BOARDS list set to:
-am335x-boneblack:beaglebone-black:1:115200
--l Is it correct (Y|n): 
-
-List of ttyUSB connected
-/dev/ttyUSB connected:
-/dev/ttyUSB0 - Prolific_Technology_Inc._USB-Serial_Controller
-/dev/ttyUSB1 - Prolific_Technology_Inc._USB-Serial_Controller
-
-Cleaning /etc/conmux and /etc/lava-dispatcher/devices
-Create ACME conmux config
-Create conmux conf of am335x-boneblack
-### WARNING ### /dev/am335x-boneblack does not exist
-check that am335x-boneblack is connnected to a /dev/ttyUSB and link it to /dev/am335x-boneblack
-Create lava conf of am335x-boneblack
-Installed 2 object(s) from 1 fixture(s)
-if acme is not yet integrated as a pdudaemon device, you may have to manually set the
-following commands:
- hard_reset_command = ssh -t root@baylibre-acme-fab.local dut-hard-reset 1
- power_off_cmd = ssh -t root@baylibre-acme-fab.local dut-switch-off 1
-if acme is integrated into pdudaemon, then setup lavapdu.conf with 'pdu' as acme type
-
-```
-
-## Setup Conmux ##
-
-After previous step you should have:
+Launch the script create-conmux.sh and answer to the questions.
+After that, you should have:
 
   * [your board].conf under /etc/lava-dispatcher/devices/
   * [your board].cf under /etc/conmux/
   * cu-loop script under /usr/local/bin
   * check that your boards are detected as usb device
-  * link acme and board to their devices.
+  * link acme and board under tests to right ttyUSB devices.
+  * /etc/hosts modified with hostname.local
+  * conmux well started with our devices:
 
 ```
-$ ln -s /dev/ttyUSB0 /dev/acme
-$ ln -s /dev/ttyUSB1 /dev/<your board>
-```
-
-  * assuming your hostname is lava-demo (result of command uname -n), Add lava-demo.local to /etc/hosts like:
-
-```
-127.0.0.1 localhost
-127.0.1.1 lava-demo lava-demo.local
-```
-
-  * stop then start conmux
-
-```
-$ sudo stop conmux
-$ sudo start conmux
-```
-
-   * check conmux starts well:
-
-```
-$ ps -aux | grep conmux
-root 1360 0.0 0.0 37060 3588 ? Ss 14:22 0:00 /usr/bin/perl /usr/sbin/conmux-registry 63000 /var/run/conmux-registry
-root 1550 0.0 0.0 55136 4704 ? Ss 14:22 0:00 /usr/bin/perl /usr/sbin/conmux /etc/conmux/acme.cf
-root 1553 0.0 0.0 55140 4848 ? Ss 14:22 0:00 /usr/bin/perl /usr/sbin/conmux /etc/conmux/am335x-boneblack.cf
-testlava 10962  0.0  0.0  15952  2260 pts/0    S+   17:24   0:00 grep --color=auto conmux
-$ sudo lsof -nP -i | grep conmux
-[sudo] password for testlava: 
-conmux-re 1360            root    3u  IPv4  12574      0t0  TCP *:63000 (LISTEN)
-conmux    1550            root    3u  IPv4  12591      0t0  TCP *:42514 (LISTEN)
-conmux    1553            root    3u  IPv4  12659      0t0  TCP *:41040 (LISTEN)
+$ sudo conmux-console --list
+acme baylibre-nuc.local:41622
+am335x-boneblack baylibre-nuc.local:37067
 ```
 
   * check connection to acme and [your board]:
 
 ```
-$ conmux-console acme
-Connected to acme console [channel connected] (~$quit to exit)
-
-# uname -a
-Linux baylibre-acme-fab 4.5.0-acme+ #1 SMP Mon May 23 15:46:38 CEST 2016 armv7l GNU/Linux
-# 
-Command(acme console)> quit
-Connection Closed (server)
+$ conmux-console --status acme
+connected
 ```
+```
+$ conmux-console --status am335x-boneblack
+connected
+```
+
+Following is an example of execution if create-conmux.sh
+```
+$ ./create-conmux.sh
+USB devices connected (2):
+/dev/ttyUSB0
+/dev/ttyUSB1
+
+Devices connected to ttyUSB (2)
+acme -> ttyUSB0
+am335x-boneblack -> ttyUSB1
+
+Do you want to add device(s)? (Y/n) 
+n
+Do you want to remove device(s)? (Y/n) 
+n
+What is the baud rate used to connect to acme? (Default=115200)
+What is the baud rate used to connect to am335x-boneblack? (Default=115200)
+conmux stop/waiting
+conmux start/running, process 6104
+Check if conmux config is started for each devices
+yes: conmux started /etc/conmux/acme.cf pid=6110 TCP= *:35714 (LISTEN)
+yes: conmux started /etc/conmux/am335x-boneblack.cf pid=6114 TCP= *:33058 (LISTEN)
+ACME address is set to:
+root@baylibre-acme-fab.local
+Correct? (Y|n): 
+BOARDS list set to:
+
+NAME              TYPE              ACME_PORT  BAUD_RATE
+am335x-boneblack  beaglebone-black  1          115200
+
+Is it correct (Y|n): 
+Cleaning /etc/lava-dispatcher/devices
+Create ACME conmux config
+Create conmux conf of am335x-boneblack
+Create lava conf of am335x-boneblack
+Installed 2 object(s) from 1 fixture(s)
+if acme is integrated into pdudaemon, then setup lavapdu.conf with 'pdu' as acme type
+conmux stop/waiting
+conmux start/running, process 6596
+```
+
+
 
 
 

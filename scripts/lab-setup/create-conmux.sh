@@ -51,33 +51,43 @@ clear_all()
 remove_device_symlink()
 {
     echo_debug "START remove_device_symlink"
+    
+    #create a comma separated list string
+    buffer=""
+    for d in ${DEVICE_LIST[@]}; do
+        if [ -z $buffer ]; then buffer="${d/,/->}"
+        else                    buffer="$buffer,${d/,/->}"
+        fi
+    done
+    #call the get_answer utils
+    get_answer -n -m "$buffer"
+    echo_debug "choice is: ${GET_ANSWER_RESULT}"
 
-    echo_question -o "-ne" "Enter the name of the device to remove: "
-    read device_name
-    if [ "`ls /dev/${device_name}`" != "" ]; then 
-        echo_debug "sudo rm -rf /dev/${device_name}"
-        sudo rm -rf /dev/${device_name}
+    for device_name in `echo ${GET_ANSWER_RESULT/,/ } | awk -F"->" '{ print $1 }'`; do
+        if [ "`ls /dev/${device_name}`" != "" ]; then 
+            echo_debug "sudo rm -rf /dev/${device_name}"
+            sudo rm -rf /dev/${device_name}
         
-        if [ -f /etc/udev/rules.d/50-lava-tty.rules -a "`cat /etc/udev/rules.d/50-lava-tty.rules | grep ${device_name}`" ]; then
+            if [ -f /etc/udev/rules.d/50-lava-tty.rules -a "`cat /etc/udev/rules.d/50-lava-tty.rules | grep ${device_name}`" ]; then
+                echo_debug "file /etc/udev/rules.d/50-lava-tty.rules: remove line `cat /etc/udev/rules.d/50-lava-tty.rules | grep ${device_name}`"
+                tmp_rules=`mktemp` 
+                cat /etc/udev/rules.d/50-lava-tty.rules | grep -v ${device_name} > ${tmp_rules}
+                sudo rm -f /etc/udev/rules.d/50-lava-tty.rules 
+                sudo mv -f ${tmp_rules} /etc/udev/rules.d/50-lava-tty.rules
+            fi 
+            echo_info "    => OK"
+        elif [ -f /etc/udev/rules.d/50-lava-tty.rules -a "`cat /etc/udev/rules.d/50-lava-tty.rules | grep ${device_name}`" ]; then
             echo_debug "file /etc/udev/rules.d/50-lava-tty.rules: remove line `cat /etc/udev/rules.d/50-lava-tty.rules | grep ${device_name}`"
             tmp_rules=`mktemp` 
             cat /etc/udev/rules.d/50-lava-tty.rules | grep -v ${device_name} > ${tmp_rules}
             sudo rm -f /etc/udev/rules.d/50-lava-tty.rules 
             sudo mv -f ${tmp_rules} /etc/udev/rules.d/50-lava-tty.rules
-        fi 
-        echo_info "    => OK"
-    elif [ -f /etc/udev/rules.d/50-lava-tty.rules -a "`cat /etc/udev/rules.d/50-lava-tty.rules | grep ${device_name}`" ]; then
-        echo_debug "file /etc/udev/rules.d/50-lava-tty.rules: remove line `cat /etc/udev/rules.d/50-lava-tty.rules | grep ${device_name}`"
-        tmp_rules=`mktemp` 
-        cat /etc/udev/rules.d/50-lava-tty.rules | grep -v ${device_name} > ${tmp_rules}
-        sudo rm -f /etc/udev/rules.d/50-lava-tty.rules 
-        sudo mv -f ${tmp_rules} /etc/udev/rules.d/50-lava-tty.rules
 
-    else
-        echo_error "    => Device ${device_name} do not exist"
-        return
-    fi
-
+        else
+            echo_error "    => Device ${device_name} do not exist"
+            return
+        fi
+    done
     echo_debug "END remove_device_symlink"
 }
 
@@ -238,20 +248,55 @@ create_symlink()
     done
 
     echo_question "Do you want to remove device(s)? (Y/n) "
-    add_dev="false"
-    while [ "${add_dev}" == "false" ]; do
-        read r
-        if [ "$r" == "n" -o "$r" == "no" ];then 
-            add_dev="true"
-        else 
-            echo_debug "CALL remove_device_symlink"
-            remove_device_symlink
-            echo_question "Another one? (Y/n) "
-        fi
-    done
-
+    read r
+    if [ "$r" != "n" -a "$r" != "no" ];then
+        echo_debug "CALL remove_device_symlink"
+        remove_device_symlink
+    fi
     echo_debug "END create_symlink"
 
+}
+
+###################################################################################
+## 
+###################################################################################
+create_conmux_conf()
+{
+    for d in ${DEVICE_LIST[@]}; do
+        device=`echo $d | awk -F, '{ print $1 }'`
+        echo_question -o "-n" "What is the baud rate used to connect to ${device}? (Default=115200)"
+        read baud
+        if [ -z "${baud}" ]; then baud=115200; fi
+
+        tmpfile=`mktemp`
+        echo """listener ${device}
+application console '${device} console' 'exec sg dialout \"/usr/local/bin/cu-loop /dev/${device} ${baud}\"'""" > $tmpfile
+        sudo mv -f $tmpfile /etc/conmux/${device}.cf
+    done
+   
+}
+
+###################################################################################
+## 
+###################################################################################
+check_conmux_config()
+{
+    echo_log "Check if conmux config is started for each devices"
+    config_error="no"
+    for d in ${DEVICE_LIST[@]}; do
+        device=`echo $d | awk -F, '{ print $1 }'`
+
+        pid=`ps -aux | grep /usr/sbin/conmux | grep /etc/conmux/${device}.cf | awk '{ print $2 }'`
+        if [ -z "$pid" ]; then
+            echo_error "no: conmux not started for /etc/conmux/${device}"
+            config_error="yes"
+        else
+            tcp_port=`sudo lsof -i | grep conmux | grep $pid | awk -F"TCP" '{ print $2 }'`
+
+            echo_info "yes: conmux started /etc/conmux/${device}.cf pid=${pid} TCP=${tcp_port}"
+        fi
+    done
+    
 }
 
 ###################################################################################
@@ -268,6 +313,8 @@ modif_hosts()
         new_value=`echo "${old_value} ${old_value}.local"`
         cat /etc/hosts | sed -e "s/${old_value}/${new_value}/" > ${tmp_file}
         sudo mv -f ${tmp_file} /etc/hosts
+        sudo chown root:root /etc/hosts
+        sudo chmod 644 /etc/hosts
         echo_debug "file /etc/hosts: add ${myhostname}.local to line ${old_value}"
 
         #restart networking only if change done
@@ -362,6 +409,30 @@ create_conmux()
         sudo apt-get install conmux;
     fi
 
+    #create basic conmux config in /etc/conmux/<device_name>.cf
+    echo_debug "CALL create_conmux_conf"
+    create_conmux_conf
+
+    #modif /etc/hosts to add <hostname>.local on same line as <hostname>
+    echo_debug "CALL modif_hosts"
+    modif_hosts
+
+
+    #check if cu-loop is in /usr/local/bin, copy it instead
+    if [ -f /usr/local/bin/cu-loop ];then
+        echo_debug "copy cu-loop to /usr/local/bin"
+        sudo cp -f cu-loop /usr/local/bin/.
+    fi
+
+    #then restart conmux
+    echo_debug "restart conmux service"
+    sudo stop conmux
+    sudo start conmux
+    sleep 1
+
+    #check conmux config
+    check_conmux_config
+
     #create the conmux boards configuration in /etc/conmux/<device_name>.cf
     if [ "${DEBUG_EN}" == "yes" ]; then DEBUG_OPTION="--debug"
     else                                DEBUG_OPTION=""
@@ -373,24 +444,9 @@ create_conmux()
         echo_error "### ERROR ### ./create-boards-conf.sh --logfile=${LOGFILE} ${DEBUG_OPTION}"
     fi
 
-    #modif /etc/hosts to add <hostname>.local on same line as <hostname>
-    echo_debug "CALL modif_hosts"
-    modif_hosts
-
-    #check if cu-loop is in /usr/local/bin, copy it instead
-    if [ -f /usr/local/bin/cu-loop ];then
-        echo_debug "copy cu-loop to /usr/local/bin"
-        sudo cp -f cu-loop /usr/local/bin/.
-    fi
-
-    #in fine restart conmux
     echo_debug "restart conmux service"
     sudo stop conmux
     sudo start conmux
-    
-
-    #test connection to acme
-
 
     echo_debug "END create_conmux"
     

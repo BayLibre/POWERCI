@@ -92,14 +92,8 @@ create_conmux_config()
         exit 1
     fi
 
-    tmpfile=`mktemp`
-    echo """
-listener acme
-application console 'acme console' 'exec sg dialout "/usr/local/bin/cu-loop /dev/acme 115200"'
-    """ > $tmpfile
-    sudo mv -f $tmpfile /etc/conmux/acme.cf
-    
-    #for each boards in the list
+   
+    #for each boards in the list,
     SAVE_IFS=$IFS
     IFS=$'\n'
     for b in `cat /tmp/lava_board | tail -n+2`; do
@@ -119,20 +113,17 @@ application console 'acme console' 'exec sg dialout "/usr/local/bin/cu-loop /dev
             echo_warning "check that ${board} is connnected to a /dev/ttyUSB and link it to /dev/${board}"    
         fi
         tmpfile=`mktemp`
-        echo """
-listener ${board}
-application console '${board} console' 'exec sg dialout "/usr/local/bin/cu-loop /dev/${board} ${baud}"'
-command 'hardreset' 'Reboot ${board}' 'ssh ${ACME_ADDR} dut-hard-reset ${port}'
+        cat /etc/conmux/${board}.cf > tmpfile
+        echo """command 'hardreset' 'Reboot ${board}' 'ssh ${ACME_ADDR} dut-hard-reset ${port}'
 command 'b' 'Reboot ${board}' 'ssh ${ACME_ADDR} dut-hard-reset ${port}'
 command 'off' 'Power off ${board}' 'ssh ${ACME_ADDR} dut-switch-off ${port}'
-command 'on' 'Power on ${board}' 'ssh ${ACME_ADDR} dut-switch-on ${port}'
-        """ > $tmpfile
-        sudo mv -f $tmpfile /etc/conmux/acme.cf
+command 'on' 'Power on ${board}' 'ssh ${ACME_ADDR} dut-switch-on ${port}'""" >> $tmpfile
+        sudo cat $tmpfile >> /etc/conmux/${board}.cf
 
         echo_log "Create lava conf of ${board}"
-        echo_debug "CALL sudo ./add_baylibre_device.py ${type} ${board}  -p ${port}  -a "ssh -t $ACME_ADDR" -b"
+        echo_debug "CALL sudo ./add_baylibre_device.py ${type} ${board}  -p ${port}  -a \"ssh -t $ACME_ADDR\" -b"
         sudo ./add_baylibre_device.py ${type} ${board}  -p ${port}  -a "ssh -t $ACME_ADDR" -b
-breakpoint
+
         if [ -z `cat /etc/lava-dispatcher/devices/${board}.conf | grep hard_reset_command` ]; then
             echo_debug "file /etc/lava-dispatcher/devices/${board}.conf: Add hard_reset_command = ssh -t $ACME_ADDR dut-hard-reset ${port}"
             tmpfile=`mktemp`
@@ -140,7 +131,7 @@ breakpoint
             echo "hard_reset_command = ssh -t $ACME_ADDR dut-hard-reset ${port}" >> $tmpfile
             sudo mv -f $tmpfile /etc/lava-dispatcher/devices/${board}.conf
         fi
-breakpoint
+
         if [ -z `cat /etc/lava-dispatcher/devices/${board}.conf | grep power_off_cmd` ]; then
             echo_debug "file /etc/lava-dispatcher/devices/${board}.conf: Add power_off_cmd = ssh -t $ACME_ADDR dut-switch-off ${port}"
             tmpfile=`mktemp`
@@ -148,7 +139,7 @@ breakpoint
             echo "power_off_cmd = ssh -t $ACME_ADDR dut-switch-off ${port}" >> $tmpfile
             sudo mv -f $tmpfile /etc/lava-dispatcher/devices/${board}.conf
         fi
-breakpoint
+
         if [ -z `cat /etc/lava-dispatcher/devices/${board}.conf | grep conmux-console` ]; then
             tmp_file=`mktemp`
             cat /etc/lava-dispatcher/devices/${board}.conf > $tmpfile
@@ -158,10 +149,11 @@ breakpoint
             sudo mv -f ${tmp_file} /etc/lava-dispatcher/devices/${board}.conf
             echo_debug "file /etc/lava-dispatcher/devices/${board}.conf: Modif connection_command with: ${new_value}"
         fi
-breakpoint
+
 
     done
     IFS=$SAVE_IFS
+set +x
 
     echo_debug "END create_conmux_config"
 }
@@ -233,9 +225,7 @@ create_board_conf()
     board_list
 
     #clean previous config files if exist
-    echo_log "Cleaning /etc/conmux and /etc/lava-dispatcher/devices"
-    echo_debug "sudo rm -f /etc/conmux/*.cf"
-    sudo rm -f /etc/conmux/*.cf
+    echo_log "Cleaning /etc/lava-dispatcher/devices"
     if [ ! -h /etc/lava-dispatcher/devices ];then
         ln -s ~/POWERCI/fs-overlay/etc/lava-dispatcher/devices /etc/lava-dispatcher/devices
     fi
