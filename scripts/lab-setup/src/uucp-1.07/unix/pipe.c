@@ -49,7 +49,7 @@ const char pipe_rcsid[] = "$Id: pipe.c,v 1.10 2002/03/05 19:10:42 ian Rel $";
 
 static void uspipe_free P((struct sconnection *qconn));
 static boolean fspipe_open P((struct sconnection *qconn, long ibaud,
-			      boolean fwait, boolean fuser));
+			      boolean fwait, boolean fuser, boolean nortscts));
 static boolean fspipe_close P((struct sconnection *qconn,
 			       pointer puuconf,
 			       struct uuconf_dialer *qdialer,
@@ -115,11 +115,12 @@ uspipe_free (qconn)
 
 /*ARGSUSED*/
 static boolean
-fspipe_open (qconn, ibaud, fwait, fuser)
+fspipe_open (qconn, ibaud, fwait, fuser, nortscts)
      struct sconnection *qconn ATTRIBUTE_UNUSED;
      long ibaud ATTRIBUTE_UNUSED;
      boolean fwait;
      boolean fuser ATTRIBUTE_UNUSED;
+     boolean nortscts ATTRIBUTE_UNUSED;
 {
   /* We don't do incoming waits on pipes.  */
   if (fwait)
