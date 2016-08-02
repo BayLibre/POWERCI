@@ -128,7 +128,19 @@ $(WORKSPACE)/lava-ci/$(RESULTS): runner
 # ======== NEW FLOW ==========
 
 get-latest:
+ifneq (,$(JOB))
+ifneq (,$(LATEST_TAG))
+	SRC/lava-ci/kci_get_latest.py --token $(KERNELCI_TOKEN) --api $(KERNELCI_API) --job $(JOB) --last $(LATEST_TAG)
+else
+	SRC/lava-ci/kci_get_latest.py --token $(KERNELCI_TOKEN) --api $(KERNELCI_API) --job $(JOB)
+endif
+else
+ifneq (,$(LATEST_TAG))
+	SRC/lava-ci/kci_get_latest.py --token $(KERNELCI_TOKEN) --api $(KERNELCI_API) --last $(LATEST_TAG)
+else
 	SRC/lava-ci/kci_get_latest.py --token $(KERNELCI_TOKEN) --api $(KERNELCI_API)
+endif
+endif
 
 submit:
 	cd $(WORKSPACE)/lava-ci && ./lava-job-runner.py  $(LAVA_CONFIG_FULL) --jobs ${LAVA_JOBS}
