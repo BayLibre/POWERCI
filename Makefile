@@ -1,32 +1,27 @@
 ## Default lab
 export LAB=lab-baylibre
-export LAVA_USER=powerci
-export LAVA_SERVER_IP=lava.baylibre.com
-export LAVA_TOKEN=n4q5ksdmahr600i5aa4h38taobfexu939gg1c53xgz89iuce25cc98pouy06iypqm0kk8l58luu4ukgzsnkf6fef4afma3f38qijw0lcfnxgz4wtdx152j90a6r0hqxu
-export LAVA_SERVER=http://$(LAVA_SERVER_IP):10080/RPC2/
 
 ## Lab associated
 ifeq ($(LAB),lab-baylibre)
   export LAVA_USER=powerci
   export LAVA_SERVER_IP=lava.baylibre.com
   export LAVA_TOKEN=n4q5ksdmahr600i5aa4h38taobfexu939gg1c53xgz89iuce25cc98pouy06iypqm0kk8l58luu4ukgzsnkf6fef4afma3f38qijw0lcfnxgz4wtdx152j90a6r0hqxu
-  export LAVA_SERVER=http://$(LAVA_SERVER_IP):10080/RPC2/
 else
 ifeq ($(LAB),baylibre-nuc)
   export LAVA_USER=lavademo
   export LAVA_SERVER_IP=baylibre-nuc.local
   export LAVA_TOKEN=1yynsllg58f5z77fp5l02a2w2y2bha3n0yfaxlabbbwmcrggqbpocowhwpr05k924xlt0fkmt1p3fl22e9qn09cbhciks2fowem0no0iwl5q0t1qp493w4mdee0h3djo
-  export LAVA_SERVER=http://$(LAVA_SERVER_IP):10080/RPC2/
 endif
 endif
+
+export LAVA_SERVER=http://$(LAVA_SERVER_IP):10080/RPC2/
 
 
 ## User specific, but this is the user we use...
 #
 # Note that if you create you own ~/.lavarc it should be used instead.
 #
-LAVA_CI_USER=powerci
-export TOPDIR=/home/$(LAVA_CI_USER)/POWERCI
+export TOPDIR=/home/$(LAVA_USER)/POWERCI
 
 ## This is where we store the attached files for each job.
 #  This is used by lava-ci
@@ -36,17 +31,13 @@ export ATTACHMENTS=/var/www/html/kernel-ci/attachments
 ## Define this as the root dir for lava-ci
 #
 export WORKSPACE=$(TOPDIR)/SRC
-
 export BUNDLE_STREAM=/anonymous/$(LAVA_USER)/
 
+#Default TAG
 export TAG?=mainline/v4.6-rc7
 
-#export TAG?=next/next-20160401
-#export TAG?=broonie-regmap/v4.6-rc1-5-gdcb05f2c7eee
-#export TAG?=stable/v4.4.6
-#export TAG?=omap/v4.6-rc1-29-g6de37509e43d
-
-RESULTS=lab-baylibre-$(subst /,_,$(TAG)).json
+RESULTS_SUMMARY=lab-baylibre-$(subst /,_,$(TAG)).json
+export RESULTS_PATH?=result
 
 
 export LAB_BAYLIBRE_TARGETS?=beaglebone-black panda-es
@@ -109,20 +100,13 @@ jobs: ${LAVA_JOBS} $(HOME)/.lavarc
 
 ${LAVA_JOBS}:
 #	cd $(WORKSPACE)/lava-ci && ./lava-kernel-ci-job-creator.py --section baylibre \
-	http://storage.kernelci.org/$(TAG) \
-	--plans $(TEST_PLAN) \
-	--targets $(LAB_BAYLIBRE_TARGETS_64) \
-	--arch arm64
-	cd $(WORKSPACE)/lava-ci && ./lava-kernel-ci-job-creator.py \
-	http://storage.kernelci.org/$(TAG) \
-	--plans $(TEST_PLAN) \
-	--targets $(LAB_BAYLIBRE_TARGETS) \
-	--arch arm --jobs $(LAVA_JOBS)
+	http://storage.kernelci.org/$(TAG) --plans $(TEST_PLAN) --targets $(LAB_BAYLIBRE_TARGETS_64) --arch arm64
+	cd $(WORKSPACE)/lava-ci && ./lava-kernel-ci-job-creator.py http://storage.kernelci.org/$(TAG) --plans $(TEST_PLAN) --targets $(LAB_BAYLIBRE_TARGETS) --arch arm --jobs $(LAVA_JOBS)
 
-$(WORKSPACE)/lava-ci/$(RESULTS): runner
+$(WORKSPACE)/lava-ci/$(RESULTS_SUMMARY): runner
 	-@mkdir -p archive
-	-@cp -rf $(WORKSPACE)/lava-ci/$(RESULTS) archive
-	-@cp -f $(LAVA_JOBS) archive/$(RESULTS)
+	-@cp -rf $(WORKSPACE)/lava-ci/$(RESULTS_SUMMARY) archive
+	-@cp -f $(LAVA_JOBS) archive/$(RESULTS_SUMMARY)
 
 
 # ======== NEW FLOW ==========
@@ -143,33 +127,45 @@ endif
 endif
 
 submit:
-	cd $(WORKSPACE)/lava-ci && ./lava-job-runner.py  $(LAVA_CONFIG_FULL) --jobs ${LAVA_JOBS}
+	cd $(WORKSPACE)/lava-ci && ./lava-job-runner.py  $(LAVA_CONFIG_FULL) --result $(RESULTS_PATH) --jobs ${LAVA_JOBS}
 
 matching:
-	cd $(WORKSPACE)/lava-ci && ./lava-matching-report.py --section baylibre --matching $(subst /,-,$(TAG))
+	cd $(WORKSPACE)/lava-ci && ./lava-matching-report.py --section baylibre --result $(RESULTS_PATH) --matching $(subst /,-,$(TAG))
 
 pushboot: 
-	cd $(WORKSPACE)/lava-ci && ./lava-report.py --boot $(WORKSPACE)/lava-ci/results/matching-boots.json --lab $(LAB) --token ${POWERCI_TOKEN} --api ${POWERCI_API}
+ifneq (,$(EMAIL))
+	cd $(WORKSPACE)/lava-ci && ./lava-report.py --result $(RESULTS_PATH) --boot $(WORKSPACE)/lava-ci/$(RESULTS_PATH)/matching-boots.json --lab $(LAB) --token ${POWERCI_TOKEN} --api ${POWERCI_API} --email $(EMAIL)
+else
+	cd $(WORKSPACE)/lava-ci && ./lava-report.py --result $(RESULTS_PATH) --boot $(WORKSPACE)/lava-ci/$(RESULTS_PATH)/matching-boots.json --lab $(LAB) --token ${POWERCI_TOKEN} --api ${POWERCI_API}
+endif
 
 pushtest:
-	cd $(WORKSPACE)/lava-ci && ./lava-report.py --test $(WORKSPACE)/lava-ci/results/matching-boots.json --lab $(LAB) --token ${POWERCI_TOKEN} --api ${POWERCI_API}
+ifneq (,$(EMAIL))
+	cd $(WORKSPACE)/lava-ci && ./lava-report.py --result $(RESULTS_PATH) --test $(WORKSPACE)/lava-ci/$(RESULTS_PATH)/matching-boots.json --lab $(LAB) --token ${POWERCI_TOKEN} --api ${POWERCI_API} --email $(EMAIL)
+else
+	cd $(WORKSPACE)/lava-ci && ./lava-report.py --result $(RESULTS_PATH) --test $(WORKSPACE)/lava-ci/$(RESULTS_PATH)/matching-boots.json --lab $(LAB) --token ${POWERCI_TOKEN} --api ${POWERCI_API}
+endif
 
 # ======== OLD FLOW ==========
 
 runner:	${LAVA_JOBS}
-	cd $(WORKSPACE)/lava-ci && ./lava-job-runner.py  $(LAVA_CONFIG_FULL)  --poll $(RESULTS)
+	cd $(WORKSPACE)/lava-ci && ./lava-job-runner.py  $(LAVA_CONFIG_FULL)  --result $(RESULTS_PATH) --poll $(RESULTS_SUMMARY)
 
-powerci: 
-	cd $(WORKSPACE)/lava-ci && ./lava-report.py --boot results/$(RESULTS) --lab $(LAB) --token ${POWERCI_TOKEN} --api ${POWERCI_API}
+powerci:
+ifneq (,$(EMAIL))
+	cd $(WORKSPACE)/lava-ci && ./lava-report.py --result $(RESULTS_PATH) --boot $(RESULTS_PATH)/$(RESULTS_SUMMARY) --lab $(LAB) --token ${POWERCI_TOKEN} --api ${POWERCI_API} --email $(EMAIL)
+else
+	cd $(WORKSPACE)/lava-ci && ./lava-report.py --result $(RESULTS_PATH) --boot $(RESULTS_PATH)/$(RESULTS_SUMMARY) --lab $(LAB) --token ${POWERCI_TOKEN} --api ${POWERCI_API}
+endif
 
 kernelci:
-	cd $(WORKSPACE)/lava-ci && ./lava-report.py --boot results/$(RESULTS) --lab $(LAB) --token ${KERNELCI_TOKEN} --api ${KERNELCI_API}
+	cd $(WORKSPACE)/lava-ci && ./lava-report.py --result $(RESULTS_PATH) --boot $(RESULTS_PATH)/$(RESULTS_SUMMARY) --lab $(LAB) --token ${KERNELCI_TOKEN} --api ${KERNELCI_API}
 
 # ==== rebuild the data base ====
 
 alljobs:
 	cd $(WORKSPACE)/lava-ci && ./lava-matching-report.py  --section baylibre
-	cd $(WORKSPACE)/lava-ci && ./lava-report.py --boot results/matching-boots.json --lab $(LAB) --token ${POWERCI_TOKEN} --api ${POWERCI_API}
+	cd $(WORKSPACE)/lava-ci && ./lava-report.py --result $(RESULTS_PATH) --boot $(RESULTS_PATH)/matching-boots.json --lab $(LAB) --token ${POWERCI_TOKEN} --api ${POWERCI_API}
 
 ## CLEANUP
 #
