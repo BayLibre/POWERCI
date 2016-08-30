@@ -2,20 +2,11 @@
 
 ## Howto populate the Devices ##
 
-As per <http://127.0.1.1/static/docs/known-devices.html>
+This is done with script: 
 
-  * check that the device-type exists in lava-dispatcher/device-types
-  * use the helper to add each board
-  * the ser2net port must be allocated, and match ser2net.conf (option -t)
-  * EDIT: we are currenty using conmux, checkout /etc/conmux for supported boards. 
-  * the pdudaemon port ditto (option -p) when applicable
-  * option -b will create the lab health bundle /anonymous/lab-health USE THE FIRST TIME ONLY
+> POWERCI/scripts/lab-setup/create-boards-conf.sh
 
-### Baylibre PowerCI Lab setup script ##
-
-see the script located under as examples:
-
-> POWERCI/scripts/lab-setup/add-boards-baylibre.sh
+**The README section related to device creation is now located [here](../scripts/lab-setup/lab-setup.md)**
 
 ### Healthcheck jobs ###
 

@@ -211,7 +211,9 @@ def main(dt, name, options):
                 f.write("%s = %s\n" % (key, config[key]))
     fd, json = tempfile.mkstemp(suffix=".json", text=True)
     if options.bundlestream:
-        template.append(template_bundle_stream())
+        res=template_bundle_stream()
+        if res != None:
+            template.append(res)
     with open(json, 'w') as f:
         simplejson.dump(template, f, indent=4)
         f.write("\n")
