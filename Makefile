@@ -1,7 +1,19 @@
-## User specific
-export LAVA_USER=lavademo
-export LAVA_SERVER_NAME=baylibre-nuc
-export LAVA_SERVER_IP=$(LAVA_SERVER_NAME).local
+## Default lab
+export LAB=lab-baylibre
+
+## Lab associated
+ifeq ($(LAB),lab-baylibre)
+  export LAVA_USER=powerci
+  export LAVA_SERVER_IP=lava.baylibre.com
+  export LAVA_TOKEN=n4q5ksdmahr600i5aa4h38taobfexu939gg1c53xgz89iuce25cc98pouy06iypqm0kk8l58luu4ukgzsnkf6fef4afma3f38qijw0lcfnxgz4wtdx152j90a6r0hqxu
+else
+ifeq ($(LAB),baylibre-nuc)
+  export LAVA_USER=lavademo
+  export LAVA_SERVER_IP=baylibre-nuc.local
+  export LAVA_TOKEN=1yynsllg58f5z77fp5l02a2w2y2bha3n0yfaxlabbbwmcrggqbpocowhwpr05k924xlt0fkmt1p3fl22e9qn09cbhciks2fowem0no0iwl5q0t1qp493w4mdee0h3djo
+endif
+endif
+
 export LAVA_SERVER_API=http://$(LAVA_SERVER_IP):10080/RPC2/
 
 ## User specific
@@ -18,17 +30,18 @@ export ATTACHMENTS=/var/www/html/kernel-ci/attachments
 ## Define this as the root dir for lava-ci
 #
 export WORKSPACE=$(TOPDIR)/SRC
-
 export BUNDLE_STREAM=/anonymous/$(LAVA_USER)/
+
 export LAVA_TOKEN=1yynsllg58f5z77fp5l02a2w2y2bha3n0yfaxlabbbwmcrggqbpocowhwpr05k924xlt0fkmt1p3fl22e9qn09cbhciks2fowem0no0iwl5q0t1qp493w4mdee0h3djo
 
 ## Kernel tag to use
 #  See https://storage.kernelci.org for full list.
 export TAG?=mainline/v4.6-rc7
 
-RESULTS=lab-baylibre-$(subst /,_,$(TAG)).json
+RESULTS_SUMMARY=lab-baylibre-$(subst /,_,$(TAG)).json
+export RESULTS_PATH?=result
 
-export LAB_BAYLIBRE_TARGETS?=beaglebone-black
+export LAB_BAYLIBRE_TARGETS?=beaglebone-black panda-es
 #LAB_BAYLIBRE_TARGETS_64=juno
 
 ## API PHP ##
@@ -58,7 +71,7 @@ help: $(HOME)/.lavarc
 	@echo "		jobs		create jobs json files, based on selected kernel tag"
 	@echo "		submit		post jobs to lava and exit"
 	@echo "		matching	pull results from LAVA matching the current TAG"
-	@echo "		pushtest	push last test/json results to kernelci.org"
+	@echo "		pushtest	push last test/json results to powerci.org"
 	@echo "		pushboot	push last boot/json results to kernelci.org"
 	@echo "		clean		remove jobs and results"
 	@echo "" 
@@ -74,9 +87,9 @@ help: $(HOME)/.lavarc
 	@echo
 	@echo "Using TEST_PLAN=$(TEST_PLAN), change with $$>TEST_PLAN=new make jobs"
 	@echo
-	@echo "== LAVA Setup & test FLOW (on lava-baylibre.com) =="
+	@echo "== LAVA Setup & test FLOW (on $(LAB)) =="
 	@echo "		auth		register user token with keyring (do once)"
-	@echo "		stream		create /anonymous/LAVA_USER/ bundle stream (do once)"
+	@echo "		stream		create /anonymous/$(LAVA_USER)/ bundle stream (do once)"
 	@echo "		fix-jobs	hack json files to use directly with lava-tool"
 	@echo "		iio		build and install IIO power capture tools"
 	@echo
@@ -88,55 +101,72 @@ jobs: ${LAVA_JOBS} $(HOME)/.lavarc
 
 ${LAVA_JOBS}:
 #	cd $(WORKSPACE)/lava-ci && ./lava-kernel-ci-job-creator.py --section baylibre \
-	http://storage.kernelci.org/$(TAG) \
-	--plans $(TEST_PLAN) \
-	--targets $(LAB_BAYLIBRE_TARGETS_64) \
-	--arch arm64
-	cd $(WORKSPACE)/lava-ci && ./lava-kernel-ci-job-creator.py \
-	http://storage.kernelci.org/$(TAG) \
-	--plans $(TEST_PLAN) \
-	--targets $(LAB_BAYLIBRE_TARGETS) \
-	--arch arm --jobs $(LAVA_JOBS)
+	http://storage.kernelci.org/$(TAG) --plans $(TEST_PLAN) --targets $(LAB_BAYLIBRE_TARGETS_64) --arch arm64
+	cd $(WORKSPACE)/lava-ci && ./lava-kernel-ci-job-creator.py http://storage.kernelci.org/$(TAG) --plans $(TEST_PLAN) --targets $(LAB_BAYLIBRE_TARGETS) --arch arm --jobs $(LAVA_JOBS)
 
-$(WORKSPACE)/lava-ci/$(RESULTS): runner
+$(WORKSPACE)/lava-ci/$(RESULTS_SUMMARY): runner
 	-@mkdir -p archive
-	-@cp -rf $(WORKSPACE)/lava-ci/$(RESULTS) archive
-	-@cp -f $(LAVA_JOBS) archive/$(RESULTS)
+	-@cp -rf $(WORKSPACE)/lava-ci/$(RESULTS_SUMMARY) archive
+	-@cp -f $(LAVA_JOBS) archive/$(RESULTS_SUMMARY)
 
 
 # ======== NEW FLOW ==========
 
 get-latest:
-	@SRC/lava-ci/kci_get_latest.py --token $(KERNELCI_TOKEN) --api $(KERNELCI_API)
+ifneq (,$(JOB))
+ifneq (,$(LATEST_TAG))
+	SRC/lava-ci/kci_get_latest.py --token $(KERNELCI_TOKEN) --api $(KERNELCI_API) --job $(JOB) --last $(LATEST_TAG)
+else
+	SRC/lava-ci/kci_get_latest.py --token $(KERNELCI_TOKEN) --api $(KERNELCI_API) --job $(JOB)
+endif
+else
+ifneq (,$(LATEST_TAG))
+	SRC/lava-ci/kci_get_latest.py --token $(KERNELCI_TOKEN) --api $(KERNELCI_API) --last $(LATEST_TAG)
+else
+	SRC/lava-ci/kci_get_latest.py --token $(KERNELCI_TOKEN) --api $(KERNELCI_API)
+endif
+endif
 
 submit:
-	cd $(WORKSPACE)/lava-ci && ./lava-job-runner.py  $(LAVA_CONFIG_FULL) --jobs ${LAVA_JOBS}
+	cd $(WORKSPACE)/lava-ci && ./lava-job-runner.py  $(LAVA_CONFIG_FULL) --result $(RESULTS_PATH) --jobs ${LAVA_JOBS}
 
 matching:
-	cd $(WORKSPACE)/lava-ci && ./lava-matching-report.py --section baylibre --matching $(subst /,-,$(TAG))
+	cd $(WORKSPACE)/lava-ci && ./lava-matching-report.py --section baylibre --result $(RESULTS_PATH) --matching $(subst /,-,$(TAG))
 
 pushboot: 
-	cd $(WORKSPACE)/lava-ci && ./lava-report.py --boot $(WORKSPACE)/lava-ci/results/matching-boots.json --lab lab-baylibre --token ${POWERCI_TOKEN} --api ${POWERCI_API}
+ifneq (,$(EMAIL))
+	cd $(WORKSPACE)/lava-ci && ./lava-report.py --result $(RESULTS_PATH) --boot $(WORKSPACE)/lava-ci/$(RESULTS_PATH)/matching-boots.json --lab $(LAB) --token ${POWERCI_TOKEN} --api ${POWERCI_API} --email $(EMAIL)
+else
+	cd $(WORKSPACE)/lava-ci && ./lava-report.py --result $(RESULTS_PATH) --boot $(WORKSPACE)/lava-ci/$(RESULTS_PATH)/matching-boots.json --lab $(LAB) --token ${POWERCI_TOKEN} --api ${POWERCI_API}
+endif
 
 pushtest:
-	cd $(WORKSPACE)/lava-ci && ./lava-report.py --test $(WORKSPACE)/lava-ci/results/matching-boots.json --lab lab-baylibre --token ${POWERCI_TOKEN} --api ${POWERCI_API}
+ifneq (,$(EMAIL))
+	cd $(WORKSPACE)/lava-ci && ./lava-report.py --result $(RESULTS_PATH) --test $(WORKSPACE)/lava-ci/$(RESULTS_PATH)/matching-boots.json --lab $(LAB) --token ${POWERCI_TOKEN} --api ${POWERCI_API} --email $(EMAIL)
+else
+	cd $(WORKSPACE)/lava-ci && ./lava-report.py --result $(RESULTS_PATH) --test $(WORKSPACE)/lava-ci/$(RESULTS_PATH)/matching-boots.json --lab $(LAB) --token ${POWERCI_TOKEN} --api ${POWERCI_API}
+endif
 
 # ======== OLD FLOW ==========
 
 runner:	${LAVA_JOBS}
-	cd $(WORKSPACE)/lava-ci && ./lava-job-runner.py  $(LAVA_CONFIG_FULL)  --poll $(RESULTS)
+	cd $(WORKSPACE)/lava-ci && ./lava-job-runner.py  $(LAVA_CONFIG_FULL)  --result $(RESULTS_PATH) --poll $(RESULTS_SUMMARY)
 
-powerci: 
-	cd $(WORKSPACE)/lava-ci && ./lava-report.py --boot results/$(RESULTS) --lab lab-baylibre --token ${POWERCI_TOKEN} --api ${POWERCI_API}
+powerci:
+ifneq (,$(EMAIL))
+	cd $(WORKSPACE)/lava-ci && ./lava-report.py --result $(RESULTS_PATH) --boot $(RESULTS_PATH)/$(RESULTS_SUMMARY) --lab $(LAB) --token ${POWERCI_TOKEN} --api ${POWERCI_API} --email $(EMAIL)
+else
+	cd $(WORKSPACE)/lava-ci && ./lava-report.py --result $(RESULTS_PATH) --boot $(RESULTS_PATH)/$(RESULTS_SUMMARY) --lab $(LAB) --token ${POWERCI_TOKEN} --api ${POWERCI_API}
+endif
 
 kernelci:
-	cd $(WORKSPACE)/lava-ci && ./lava-report.py --boot results/$(RESULTS) --lab lab-baylibre --token ${KERNELCI_TOKEN} --api ${KERNELCI_API}
+	cd $(WORKSPACE)/lava-ci && ./lava-report.py --result $(RESULTS_PATH) --boot $(RESULTS_PATH)/$(RESULTS_SUMMARY) --lab $(LAB) --token ${KERNELCI_TOKEN} --api ${KERNELCI_API}
 
 # ==== rebuild the data base ====
 
 alljobs:
 	cd $(WORKSPACE)/lava-ci && ./lava-matching-report.py  --section baylibre
-	cd $(WORKSPACE)/lava-ci && ./lava-report.py --boot results/matching-boots.json --lab lab-baylibre --token ${POWERCI_TOKEN} --api ${POWERCI_API}
+	cd $(WORKSPACE)/lava-ci && ./lava-report.py --result $(RESULTS_PATH) --boot $(RESULTS_PATH)/matching-boots.json --lab $(LAB) --token ${POWERCI_TOKEN} --api ${POWERCI_API}
 
 ## CLEANUP
 #
@@ -190,7 +220,7 @@ iio:
 ### Post one job for debug
 #
 post:
-	lava-tool submit-job http://powerci@lava.baylibre.com:10080/RPC2/ $(MYJOB)
+	lava-tool submit-job $(LAVA_SERVER) $(MYJOB)
 
 jetson:
 	cd $(WORKSPACE)/lava-ci && LAVA_JOBS=$(shell pwd)/jetson ./lava-kernel-ci-job-creator.py --section baylibre http://storage.kernelci.org/$(TAG) \
