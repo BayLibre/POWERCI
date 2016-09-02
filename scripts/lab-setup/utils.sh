@@ -63,6 +63,7 @@ echo_type()
     if [ "${xtraceStatus}" == "on" ]; then set +x; fi
 
     local logdate=`date +"[%Y/%m/%d - %H:%m:%S]"`    
+    local option=""
 
     local opt=`getopt -o o: --long option: -- "$@"`
     if [ $? != 0 ] ; then echo "Terminating..." >&2 ; exit 1 ; fi
@@ -72,7 +73,7 @@ echo_type()
     while true ; do
         case "$1" in
             -o|--option) 
-                local option=$2; shift 2;;
+                option=$2; shift 2;;
             --) shift ; break ;;
             *) echo "Internal error!" ; exit 1 ;;
         esac

@@ -1,4 +1,8 @@
 #!/bin/bash
+set -o pipefail
+set -o errtrace
+set -o nounset  
+#set -o errexit #Exit for any error found... 
 
 
 ###################################################################################
@@ -194,16 +198,19 @@ get_connected_devices()
     #IFS=$'\n'
 
     ## List what is connected
-    ttyUSB=`ls -1 /dev/ttyUSB* 2>/dev/null`
-    nb_ttyUSB=`echo ${ttyUSB} | wc -w`
+    #ttyUSB=`ls -1 /dev/ | grep 'ttyUSB'`
+    ttyUSB=`ls -1 /dev/tty* | grep ttyUSB`
+    nb_ttyUSB=`echo "${ttyUSB}" | wc -w`
     echo_log "USB devices connected (${nb_ttyUSB}):"
-    if [ -z "${ttyUSB}" ]; then echo_error "None"
-    else                        echo_info "${ttyUSB}"
+    if [ -z "${ttyUSB}" ]; then 
+        echo_error "None"
+    else                        
+        echo_info "${ttyUSB}"
     fi
 
 
     echo ""
-    devices=`ls -l /dev/ | grep ttyUSB | grep " -> " | awk '{ print $9 "," $11 }'`
+    devices=`ls -l /dev/tty* | grep ttyUSB | grep " -> " | awk '{ print $9 "," $11 }'`
     nb_devices=`echo $devices | wc -w`
     echo_log "Devices connected to ttyUSB (${nb_devices})"
     if [ -z "$devices" ]; then echo_error "None"
@@ -337,6 +344,8 @@ ProcessAbort()
 # specific treatment for process abort
 {
     echo_error "Process Aborted"
+    echo_error "=> rc before Abort: $1"
+    echo_error "=> abort called after: $2 $3"
     exit 1
 }
 
@@ -346,8 +355,26 @@ PostProcess()
 # cleaning before exit
 {
     echo_debug "PostProcess"
+    echo_debug "=> rc: $1"
+    echo_debug "=> exit after: $2 $3"
 }
 
+###################################################################################
+trapErr()
+###################################################################################
+# cleaning before exit
+{
+    if test -f $stderr_log; then
+        stderr=$( tail -n 1 $stderr_log | grep -v "^+" )
+        if test -n "$stderr"; then
+            echo_error "ErrorProcess"
+            echo_error "=> $2 $3"
+            echo_error "=> rc: $1"
+            echo_error "=> Error: $stderr"
+            exit $1
+        fi
+    fi
+}
 
 ###################################################################################
 ###################################################################################
@@ -360,12 +387,13 @@ create_conmux()
 {
     LOGFILE="create-conmux.log"
     DEBUG_EN="no"
+    DEBUG_LVL=0
     if [ -f ${LOGFILE} ]; then rm -f ${LOGFILE}; fi
 
     
     # list USB device connected and ask if it's correct
     # if not help user to define symlink in rule
-    declare -a DEVICE_LIST
+    declare -a DEVICE_LIST=( "" )
 
     ## Analyse input parameter
     TEMP=`getopt -o cdhl: --long clear-all,debug,help,logfile: -- "$@"`
@@ -379,6 +407,8 @@ create_conmux()
             -c|--clear-all) 
                 clear_all; shift;;
             -d|--debug) 
+                DEBUG_LVL=$((${DEBUG_LVL}+1))
+                if [ $DEBUG_LVL -ge 2 ]; then set -x; fi
                 DEBUG_EN="yes"; shift;;
             -h|--help) 
                 usage 
@@ -455,10 +485,20 @@ create_conmux()
 ###################################################################################
 ### Script starts here
 ###################################################################################
-trap "ProcessAbort" SIGINT SIGTERM
-trap "PostProcess" EXIT
+trap "" EXIT ERR SIGINT SIGTERM SIGKILL
+trap - EXIT ERR SIGINT SIGTERM SIGKILL
+trap 'ProcessAbort $? ${BASH_SOURCE}:${LINENO} ${FUNCNAME[0]:+${FUNCNAME[0]}}' SIGINT SIGTERM SIGKILL
+trap 'PostProcess $? ${BASH_SOURCE}:${LINENO} ${FUNCNAME[0]:+${FUNCNAME[0]}}' EXIT
+trap 'trapErr $? ${BASH_SOURCE}:${LINENO} ${FUNCNAME[0]:+${FUNCNAME[0]}}' ERR
+
+abspath=`dirname $(readlink -f $0)`
+cd $abspath
+
+stderr_log="create_conmux.log"
+exec 2>"$stderr_log"
 
 source utils.sh
+
 create_conmux ${@}
 
 
