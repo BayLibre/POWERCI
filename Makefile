@@ -1,9 +1,14 @@
+## User specific
+export LAVA_USER=lavademo
+export LAVA_SERVER_NAME=baylibre-nuc
+export LAVA_SERVER_IP=$(LAVA_SERVER_NAME).local
+export LAVA_SERVER_API=http://$(LAVA_SERVER_IP):10080/RPC2/
 
-## User specific, but this is the user we use...
+## User specific
 #
 # Note that if you create you own ~/.lavarc it should be used instead.
 #
-export TOPDIR=/home/powerci/POWERCI
+export TOPDIR=/home/$(LAVA_USER)/POWERCI
 
 ## This is where we store the attached files for each job.
 #  This is used by lava-ci
@@ -14,23 +19,16 @@ export ATTACHMENTS=/var/www/html/kernel-ci/attachments
 #
 export WORKSPACE=$(TOPDIR)/SRC
 
-export LAVA_USER=powerci
-export BUNDLE_STREAM=/anonymous/powerci/
-export LAVA_TOKEN=n4q5ksdmahr600i5aa4h38taobfexu939gg1c53xgz89iuce25cc98pouy06iypqm0kk8l58luu4ukgzsnkf6fef4afma3f38qijw0lcfnxgz4wtdx152j90a6r0hqxu
+export BUNDLE_STREAM=/anonymous/$(LAVA_USER)/
+export LAVA_TOKEN=1yynsllg58f5z77fp5l02a2w2y2bha3n0yfaxlabbbwmcrggqbpocowhwpr05k924xlt0fkmt1p3fl22e9qn09cbhciks2fowem0no0iwl5q0t1qp493w4mdee0h3djo
 
+## Kernel tag to use
+#  See https://storage.kernelci.org for full list.
 export TAG?=mainline/v4.6-rc7
-
-#export TAG?=next/next-20160401
-#export TAG?=broonie-regmap/v4.6-rc1-5-gdcb05f2c7eee
-#export TAG?=stable/v4.4.6
-#export TAG?=omap/v4.6-rc1-29-g6de37509e43d
 
 RESULTS=lab-baylibre-$(subst /,_,$(TAG)).json
 
-export LAVA_SERVER_IP=lava.baylibre.com
-export LAVA_SERVER=http://lava.baylibre.com:10080/RPC2/
-
-export LAB_BAYLIBRE_TARGETS?=beaglebone-black panda-es
+export LAB_BAYLIBRE_TARGETS?=beaglebone-black
 #LAB_BAYLIBRE_TARGETS_64=juno
 
 ## API PHP ##
@@ -51,7 +49,7 @@ KERNELCI_PLAN=boot
 export TEST_PLAN?=$(POWERCI_PLAN)
 export LAVA_JOBS?=$(TOPDIR)/jobs-$(subst /,_,$(TAG))-$(TEST_PLAN)
 
-LAVA_CONFIG_FULL= --server $(LAVA_SERVER) --token $(LAVA_TOKEN) --stream $(BUNDLE_STREAM)
+LAVA_CONFIG_FULL= --server $(LAVA_SERVER_API) --token $(LAVA_TOKEN) --stream $(BUNDLE_STREAM)
 
 help: $(HOME)/.lavarc
 	@clear
@@ -149,10 +147,10 @@ clean:
 #
 $(HOME)/.lavarc:
 	@echo "[baylibre]" > $@
-	@echo "server: "$(LAVA_SERVER) >> $@
+	@echo "server: "$(LAVA_SERVER_API) >> $@
 	@echo "token: "$(LAVA_TOKEN) >> $@
 	@echo "stream: "$(BUNDLE_STREAM) >> $@
-	@echo "username: powerci" >> $@
+	@echo "username: "$(LAVA_USER) >> $@
 	@echo "jobs:" >> $@
 	@echo "[kernelci]" >> $@
 	@echo "token: "$(KERNELCI_TOKEN) >> $@
@@ -162,18 +160,18 @@ $(HOME)/.lavarc:
 #
 scripts/.$(LAVA_USER).tok:
 	echo $(LAVA_TOKEN) >  scripts/.$(LAVA_USER).tok
-	lava-tool auth-add --token-file  scripts/.$(LAVA_USER).tok $(LAVA_SERVER)
+	lava-tool auth-add --token-file  scripts/.$(LAVA_USER).tok $(LAVA_SERVER_API)
 
 auth: scripts/.$(LAVA_USER).tok
 
 stream: scripts/.$(LAVA_USER).tok
-	-@lava-tool make-stream --dashboard-url $(LAVA_SERVER) $(BUNDLE_STREAM)
+	-@lava-tool make-stream --dashboard-url $(LAVA_SERVER_API) $(BUNDLE_STREAM)
 
 fix-jobs:
 	-@rm -rf fixed-jobs
 	@mkdir -p fixed-jobs
 	@find $(LAVA_JOBS) -name *.json | xargs sed 's#LAVA_SERVER_IP#'"$LAVA_SERVER_IP"'#' -in-place=.fixed.json
-	@find $(LAVA_JOBS) -name *.json | xargs sed 's#LAVA_SERVER#'"$LAVA_SERVER"'#' -in-place=.fixed.json
+	@find $(LAVA_JOBS) -name *.json | xargs sed 's#LAVA_SERVER#'"$LAVA_SERVER_API"'#' -in-place=.fixed.json
 	@find $(LAVA_JOBS) -name *.json | xargs sed 's#BUNDLE_STREAM#'"$BUNDLE_STREAM"'#' -in-place=.fixed.json
 	@find $(LAVA_JOBS) -name *.json | xargs sed 's#LAVA_RPC_LOGIN#'"$LAVA_RPC_LOGIN"'#' -in-place=.fixed.json
 	mv $(LAVA_JOBS)/*.fixed.json fixed-jobs
