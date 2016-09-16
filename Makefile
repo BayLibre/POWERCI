@@ -14,10 +14,9 @@ ifeq ($(LAB),baylibre-nuc)
 endif
 endif
 
-export LAVA_SERVER=http://$(LAVA_SERVER_IP):10080/RPC2/
+export LAVA_SERVER_API=http://$(LAVA_SERVER_IP):10080/RPC2/
 
-
-## User specific, but this is the user we use...
+## User specific
 #
 # Note that if you create you own ~/.lavarc it should be used instead.
 #
@@ -33,12 +32,12 @@ export ATTACHMENTS=/var/www/html/kernel-ci/attachments
 export WORKSPACE=$(TOPDIR)/SRC
 export BUNDLE_STREAM=/anonymous/$(LAVA_USER)/
 
-#Default TAG
+## Kernel tag to use
+#  See https://storage.kernelci.org for full list.
 export TAG?=mainline/v4.6-rc7
 
 RESULTS_SUMMARY=lab-baylibre-$(subst /,_,$(TAG)).json
 export RESULTS_PATH?=result
-
 
 export LAB_BAYLIBRE_TARGETS?=beaglebone-black panda-es
 #LAB_BAYLIBRE_TARGETS_64=juno
@@ -61,7 +60,7 @@ KERNELCI_PLAN=boot
 export TEST_PLAN?=$(POWERCI_PLAN)
 export LAVA_JOBS?=$(TOPDIR)/jobs-$(subst /,_,$(TAG))-$(TEST_PLAN)
 
-LAVA_CONFIG_FULL= --server $(LAVA_SERVER) --token $(LAVA_TOKEN) --stream $(BUNDLE_STREAM)
+LAVA_CONFIG_FULL= --server $(LAVA_SERVER_API) --token $(LAVA_TOKEN) --stream $(BUNDLE_STREAM)
 
 help: $(HOME)/.lavarc
 	@clear
@@ -176,10 +175,10 @@ clean:
 #
 $(HOME)/.lavarc:
 	@echo "[baylibre]" > $@
-	@echo "server: "$(LAVA_SERVER) >> $@
+	@echo "server: "$(LAVA_SERVER_API) >> $@
 	@echo "token: "$(LAVA_TOKEN) >> $@
 	@echo "stream: "$(BUNDLE_STREAM) >> $@
-	@echo "username: $(LAVA_USER)" >> $@
+	@echo "username: "$(LAVA_USER) >> $@
 	@echo "jobs:" >> $@
 	@echo "[kernelci]" >> $@
 	@echo "token: "$(KERNELCI_TOKEN) >> $@
@@ -189,18 +188,18 @@ $(HOME)/.lavarc:
 #
 scripts/.$(LAVA_USER).tok:
 	echo $(LAVA_TOKEN) >  scripts/.$(LAVA_USER).tok
-	lava-tool auth-add --token-file  scripts/.$(LAVA_USER).tok $(LAVA_SERVER)
+	lava-tool auth-add --token-file  scripts/.$(LAVA_USER).tok $(LAVA_SERVER_API)
 
 auth: scripts/.$(LAVA_USER).tok
 
 stream: scripts/.$(LAVA_USER).tok
-	-@lava-tool make-stream --dashboard-url $(LAVA_SERVER) $(BUNDLE_STREAM)
+	-@lava-tool make-stream --dashboard-url $(LAVA_SERVER_API) $(BUNDLE_STREAM)
 
 fix-jobs:
 	-@rm -rf fixed-jobs
 	@mkdir -p fixed-jobs
 	@find $(LAVA_JOBS) -name *.json | xargs sed 's#LAVA_SERVER_IP#'"$LAVA_SERVER_IP"'#' -in-place=.fixed.json
-	@find $(LAVA_JOBS) -name *.json | xargs sed 's#LAVA_SERVER#'"$LAVA_SERVER"'#' -in-place=.fixed.json
+	@find $(LAVA_JOBS) -name *.json | xargs sed 's#LAVA_SERVER#'"$LAVA_SERVER_API"'#' -in-place=.fixed.json
 	@find $(LAVA_JOBS) -name *.json | xargs sed 's#BUNDLE_STREAM#'"$BUNDLE_STREAM"'#' -in-place=.fixed.json
 	@find $(LAVA_JOBS) -name *.json | xargs sed 's#LAVA_RPC_LOGIN#'"$LAVA_RPC_LOGIN"'#' -in-place=.fixed.json
 	mv $(LAVA_JOBS)/*.fixed.json fixed-jobs
