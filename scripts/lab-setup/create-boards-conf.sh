@@ -80,8 +80,8 @@ acme_addr()
         conmux_cmd="success"
         debug_option=""
         if [ "$DEBUG_EN" == "yes" ]; then debug_option="-v"; fi
-        echo_debug "python conmux_cmd.py ${debug_option} -l $LOGFILE acme \"pwd\" \"uname -n\" \"whoami\" > ${tmp_res}"
-        python conmux_cmd.py ${debug_option} -l $LOGFILE acme "uname -n" "whoami" > ${tmp_res}
+        echo_debug "python expect_exec_cmd.py ${debug_option} -l $LOGFILE acme \"pwd\" \"uname -n\" \"whoami\" > ${tmp_res}"
+        python expect_exec_cmd.py ${debug_option} -l $LOGFILE acme "uname -n" "whoami" > ${tmp_res}
         if [ $? != 0 ]; then
             echo_error "### ERROR ### Did not perform to connect or read adress from acme"
             conmux_cmd="fail"
@@ -132,8 +132,8 @@ uname -n
 
         echo_log "Change address of ACME"
         if [ "$DEBUG_EN" == "yes" ]; then debug_option="-v"; fi
-        echo_debug "python conmux_cmd.py ${debug_option} -l $LOGFILE acme ${tmp_cmd} > ${tmp_res}"
-        python conmux_cmd.py ${debug_option} -l $LOGFILE acme ${tmp_cmd} > ${tmp_res}
+        echo_debug "python expect_exec_cmd.py ${debug_option} -l $LOGFILE acme ${tmp_cmd} > ${tmp_res}"
+        python expect_exec_cmd.py ${debug_option} -l $LOGFILE acme ${tmp_cmd} > ${tmp_res}
         #get result
         newaddrchg=`cat ${tmp_res} | grep -A1 "command: uname -n" | grep response | awk -F"response: " '{ print $2 }' | sed -e "s/[ \t\n]*//g"`
         ACME_ADDR=`echo "${user}@${newaddrchg}"`
