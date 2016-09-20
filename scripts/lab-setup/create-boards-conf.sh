@@ -131,10 +131,11 @@ uname -n
         #execute file via conmux
 
         echo_log "Change address of ACME"
-        echo_debug "python conmux_cmd.py acme ${tmp_cmd} > ${tmp_res}"
-        python conmux_cmd.py acme ${tmp_cmd} > ${tmp_res}
+        if [ "$DEBUG_EN" == "yes" ]; then debug_option="-v"; fi
+        echo_debug "python conmux_cmd.py ${debug_option} -l $LOGFILE acme ${tmp_cmd} > ${tmp_res}"
+        python conmux_cmd.py ${debug_option} -l $LOGFILE acme ${tmp_cmd} > ${tmp_res}
         #get result
-        newaddrchg=`cat ${tmp_res} | grep -A1 "command: uname -n" | awk -F"response: " '{ print $2 }' | sed -e "s/[ \t\n]*//g"`
+        newaddrchg=`cat ${tmp_res} | grep -A1 "command: uname -n" | grep response | awk -F"response: " '{ print $2 }' | sed -e "s/[ \t\n]*//g"`
         ACME_ADDR=`echo "${user}@${newaddrchg}"`
 
         echo_log "ACME address is changed to:"
@@ -217,7 +218,6 @@ board_list()
     cat /tmp/lava_board | column -t
     echo $NC
 
-read a
     echo_debug "DEVICE_LIST:\n ${DEVICE_LIST}"
 
     echo_debug "END board_list"
@@ -269,7 +269,7 @@ command 'on' 'Power on ${board}' 'ssh ${ACME_ADDR} dut-switch-on ${port}'""" >> 
         echo_log "Create lava conf of ${board}"
         debug_option=""
         if [ "$DEBUG_EN" == "yes" ]; then debug_option="-v"; fi
-        echo_debug "CALL sudo python ./add_baylibre_device.py ${debug_option} -l $LOGFILE  -p ${port} -a \"ssh -t $ACME_ADDR\" -b ${type} ${board} "
+        echo_debug "CALL sudo python ./add_baylibre_device.py ${debug_option} -l $LOGFILE  -p ${port} -a \"$ACME_ADDR\" -b ${type} ${board} "
         sudo python ./add_baylibre_device.py ${debug_option} -l $LOGFILE -p ${port} -a "ssh -t $ACME_ADDR" -b ${type} ${board} 
 
         if [ -z `cat /etc/lava-dispatcher/devices/${board}.conf | grep hard_reset_command` ]; then
@@ -422,7 +422,7 @@ trap 'PostProcess $? ${BASH_SOURCE}:${LINENO} ${FUNCNAME[0]:+${FUNCNAME[0]}}' EX
 create_board_conf ${@}
 
 #reset all trap
-trap - EXIT ERR SIGINT SIGTERM SIGKILL
+#trap - EXIT ERR SIGINT SIGTERM SIGKILL
 
 
 #trap "ProcessAbort" SIGINT SIGTERM
