@@ -140,7 +140,12 @@ remove_device_symlink()
             TTYUSB=""
             wait_ttyUSB_disconnection
             device_name=`ls -l /dev/ | grep $TTYUSB | awk '{ print $9 }' 2>/dev/null`
-            if [ "${device_name}" != "" ]; then sudo rm -f /dev/${device_name}; fi
+            if [ "${device_name}" != "" ]; then 
+                echo_debug "sudo rm -rf /dev/${device_name}"
+                sudo rm -f /dev/${device_name}
+                echo_debug "sudo rm -rf /etc/conmux/${device_name}.cf"
+                sudo rm -f /etc/conmux/${device_name}.cf
+            fi
             echo_log "  => ${device_name} disconnected"
         done
         sudo rm -f /etc/udev/rules.d/50-lava-tty.rules
@@ -193,6 +198,8 @@ remove_device_symlink()
         if [ "`ls /dev/${device_name}`" != "" ]; then 
             echo_debug "sudo rm -rf /dev/${device_name}"
             sudo rm -rf /dev/${device_name}
+            echo_debug "sudo rm -rf /etc/conmux/${device_name}.cf"
+            sudo rm -f /etc/conmux/${device_name}.cf
         fi
         
         #remove device from rule if exist
@@ -694,7 +701,7 @@ trap 'PostProcess $? ${BASH_SOURCE}:${LINENO} ${FUNCNAME[0]:+${FUNCNAME[0]}}' EX
 create_conmux ${@}
 
 #reset all trap
-trap - EXIT ERR SIGINT SIGTERM SIGKILL
+#trap - EXIT ERR SIGINT SIGTERM SIGKILL
 
 
 
