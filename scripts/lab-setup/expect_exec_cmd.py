@@ -42,14 +42,17 @@ class expect_generic:
         
         logging.info('Connect to '+toaccess)
         self.p = pexpect.spawn("%s %s" % (tool,toaccess),logfile=self.logger)
+        time.sleep(4)
 
 
     def expect(self,expected):
         logging.debug("expect: START")
-        logging.debug("expect: input expected = "+str(expected))
-        time.sleep(2)
+        time.sleep(1)
         expected.extend([pexpect.EOF,pexpect.TIMEOUT])
+        logging.debug("expect: input expected = "+str(expected))
         i=self.p.expect(expected)
+        logging.debug("expect: received index "+str(i))
+        logging.debug("expect: received buffer "+repr(self.p.buffer))
         if i==len(expected)-1:
             logging.error("### ERROR ### Connection timeout")
             print "### ERROR ### Connection timeout"
@@ -61,8 +64,11 @@ class expect_generic:
             logging.debug("expect: exit 1")
             sys.exit(1)
         else:
-            logging.debug("expect: return"+str(i))
-            return i
+            if self.p.buffer.strip() == '':
+                logging.debug("expect: return"+str(i))
+                return i
+            else:
+                return self.expect(expected)
 
     def connect(self):
         pass
@@ -84,12 +90,12 @@ class expect_generic:
 
             self.p.sendline(cmd)
             logging.debug("call expect")
-            if len(' '+cmd)>79:
-                cmd1=(' '+cmd)[:79]
-                cmd2=(' '+cmd)[80:]
-                i=self.expect([cmd1+"\r"+self.newline+cmd2+self.newline+"#",cmd1+"\r"+self.newline+cmd2+self.newline+"(.*)"+self.newline+"#"])
+            if len(self.prompt+' '+cmd)>79:
+                val=len(self.prompt+' '+cmd) // 80
+                cmd2=(self.prompt+' '+cmd)[val*80:]
+                i=self.expect([cmd2+self.newline+self.prompt,cmd2+self.newline+"(.*)"+self.newline+self.prompt])
             else:
-                i=self.expect([cmd+self.newline+"#",cmd+self.newline+"(.*)"+self.newline+"#"])
+                i=self.expect([cmd+self.newline+self.prompt,cmd+self.newline+"(.*)"+self.newline+self.prompt])
             res=""
             if i==1:
                 res=self.p.match.group(1)
@@ -101,7 +107,7 @@ class expect_generic:
 
             logging.debug("send 'echo $?' to get command return code")
             self.p.sendline("echo $?")
-            i=self.expect(["echo \$\?"+self.newline+"([0-9]*)"+self.newline+"#"])
+            i=self.expect(["echo \$\?"+self.newline+"([0-9]*)"+self.newline+self.prompt])
             rc=self.p.match.group(1).lstrip().rstrip()
             logging.debug("command return code: "+str(rc))
             A_cmds[idx]['rc']=rc
@@ -117,6 +123,7 @@ class expect_conmux(expect_generic):
         self.device=device
         expect_generic.__init__(self,'conmux-console',self.device,logfile)
         self.newline='\r\r\n'
+        self.prompt='#'
 
     def connect(self,user_passwd="root"):
         login=user_passwd.split(":")
@@ -127,19 +134,19 @@ class expect_conmux(expect_generic):
 
         logging.debug("Send \r, expect 'login:' or prompt")
         self.p.sendline("\r")
-        if self.expect(["login: ","# "]) == 0:
+        if self.expect(["login: ",self.prompt]) == 0:
             logging.debug(" => login: received")
             logging.info('Need login info')
 
             logging.debug("Send login, expect 'Password:' or prompt")
             self.p.sendline(login[0])
-            if self.expect(["Password: ","# "]) == 0:
+            if self.expect(["Password: ",self.prompt]) == 0:
                 logging.debug(" => 'Password:' received")
                 if len(login)==1: passwd=""
                 else:             passwd=login[1]
                 logging.debug("Send password, expect 'Login incorrect' or prompt")
                 self.p.sendline(passwd)
-                if self.expect(["Login incorrect","# "])==0:
+                if self.expect(["Login incorrect",self.prompt])==0:
                     logging.error("### ERROR ### Login incorrect")
                     print "### ERROR ### Login incorrect"
                     sys.exit(1)
@@ -156,7 +163,11 @@ class expect_conmux(expect_generic):
             logging.debug(" => wait for commands")
 
         self.p.sendline("\r")
-        res = self.expect(["# "])
+        res = self.expect([self.newline+"#",self.newline+"(.*)#"])
+        if res == 1:
+            elems=self.p.match.group(1).split(self.newline)
+            self.prompt=elems[len(elems)-1]+"#"
+        
 
 
     def disconnect(self):
@@ -171,30 +182,31 @@ class expect_ssh(expect_generic):
         self.addr=addr
         expect_generic.__init__(self,'ssh',self.addr,logfile)
         self.newline='\r\n'
+        self.prompt='#'
 
     def connect(self):
-        res = self.expect(["ssh: Could not resolve hostname (.*): Name or service not known",
-                  "Are you sure you want to continue connecting (yes/no) ?",
+        i = self.expect(["ssh: Could not resolve hostname (.*): Name or service not known",
+                  "Are you sure you want to continue connecting \(yes/no\)\?",
                   "# "])
-        if res == 0:
+        if i == 0:
             logging.error("### ERROR ### Name or service not known: %s" % self.p.match.group(1))
             print "### ERROR ### Name or service not known: %s" % self.p.match.group(1)
             sys.exit(1)
 
-        elif res == 1:
+        elif i == 1:
             self.p.sendline("yes")
-            res = self.expect(["Host key verification failed.","# "])
-            if res == 0:
+            j = self.expect(["Host key verification failed.","# "])
+            if j == 0:
                 logging.error("### ERROR ### Host key verification failed")
                 print "### ERROR ### Host key verification failed"
                 sys.exit(1)
             
-            elif res == 1:
+            elif j == 1:
                 logging.info(' => Connection Done')
                 logging.debug(" => prompt received")
                 logging.debug(" => wait for commands")
 
-        elif res == 2:
+        elif i == 2:
             logging.info(' => Connection Done')
             logging.debug(" => prompt received")
             logging.debug(" => wait for commands")
@@ -202,7 +214,10 @@ class expect_ssh(expect_generic):
         self.p.setwinsize(1000,1000)
 
         self.p.sendline("\r")
-        res = self.expect(["# "])
+        res = self.expect([self.newline+"#",self.newline+"(.*)# "])
+        if res == 1:
+            elems=self.p.match.group(1).split(self.newline)
+            self.prompt=elems[len(elems)-1]+"#"
 
 
     def disconnect(self):
@@ -216,14 +231,19 @@ class expect_ssh(expect_generic):
 def expect_exec_cmd(tool,mandatory_args,args):
     if args.verbosity: verbosity_level=logging.DEBUG
     else:              verbosity_level=logging.INFO
+    if not args.keeplog and os.path.isfile(args.logfile): 
+        os.remove(args.logfile)
     logging.basicConfig(filename=args.logfile,filemode='a',level=verbosity_level,format='%(filename)s - %(levelname)s - %(message)s')
-
-    commands_list=create_commands_list(args.commands)
 
     t = tool(mandatory_args[0],args.logfile)
     if mandatory_args[1]: t.connect(mandatory_args[1])
     else:                 t.connect()
-    A_cmds=t.exec_commands(commands_list)
+
+    if args.commands:
+        commands_list=create_commands_list(args.commands)
+        A_cmds=t.exec_commands(commands_list)
+
+
     t.disconnect()
 
     return A_cmds
@@ -236,14 +256,20 @@ def ssh_exec_cmd(args):
     mandatory_args=[args.addr,None]
     return expect_exec_cmd(expect_ssh,mandatory_args,args)
 
+def ssh_copy_id(args):
+    mandatory_args=[args.addr,None]
+    return expect_exec_cmd(expect_ssh,mandatory_args,args)
+
 def main():
     #usage = "Usage: %prog [-v<N>][-l logfile][-u user[:password]] device_name CMD [CMD ...]"
     description = "execute commands on device via conmux-console"
 
     #parser = argparse.ArgumentParser(usage=usage, description=description)
     parser = argparse.ArgumentParser(description=description)
-    parser.add_argument("-l", "--logfile",   action="store",      dest='logfile', default="conmux_cmd.log", 
+    parser.add_argument("-l", "--logfile",   action="store",      dest='logfile', default="expect_exec_cmd.log", 
                        help="logfile to use, default is conmux_cmd.log")
+    parser.add_argument("--keeplog",   action="store_true",      dest='keeplog', default=False, 
+                       help="keep logfile if already exist, remove it if not")
     parser.add_argument("-v", "--verbosity", action="store_true", dest='verbosity', default=False, 
                        help="verbosity level, default=0")
     parser.add_argument("--version",         action="version", version='Version v0.1', 
@@ -266,6 +292,10 @@ def main():
                        help="command(s) (can be file name) to be executed")
     parser_ssh.set_defaults(func=ssh_exec_cmd)
 
+    parser_ssh=subparsers.add_parser('ssh_copy_id', help="copy ssh pub key")
+    parser_ssh.add_argument('addr',  metavar='addr', 
+                        help="addr to connect")
+    parser_ssh.set_defaults(func=ssh_copy_id)
 
     args=parser.parse_args()
     args.func(args)

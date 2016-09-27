@@ -42,6 +42,7 @@ parse_args()
             --version)
                 echo "Version: $VERSION"; exit 0; shift;;
             -v)
+                DEBUG=$1
                 DEBUG_LVL=$((${DEBUG_LVL}+1))
                 if [ $DEBUG_LVL -ge 2 ]; then set -x; fi
                 DEBUG_EN="yes"; shift;;
@@ -66,98 +67,147 @@ parse_args()
 }
 
 ###################################################################################
-## check if environment variable ACME_ADDR exist or not
-#  Purpose a default ACME_ADDR to user that shall validate or enter a new one
-#  Put the validated ACME_ADDR in /etc/profile.d/lava_lab.sh that will contains some setup dedicated env variable
+## check an ssh cnx to dest_addr
+#  if cnx succeed, get its user@address with command 'whoami' and 'uname -n'
 ###################################################################################
-acme_addr()
+expect_exec_cmd()
 {
-    echo_debug "START acme_addr"
+    echo_debug "expect_exec_cmd START"
+    local debug=`if [ "$DEBUG_EN" == "yes" ]; then echo "-v"; else echo ""; fi`
+    local log="-l $LOGFILE --keeplog"
+    local cnx_type="$1"
+    local dest_addr="$2"
+    local command_file="$3"
 
-    if [ -z "`printenv | grep ACME_ADDR`" ];then
-        tmp_res=`mktemp`
-        echo_log "Get address of ACME"
-        conmux_cmd="success"
-        debug_option=""
-        if [ "$DEBUG_EN" == "yes" ]; then debug_option="-v"; fi
-        echo_debug "python expect_exec_cmd.py ${debug_option} -l $LOGFILE acme \"pwd\" \"uname -n\" \"whoami\" > ${tmp_res}"
-        python expect_exec_cmd.py ${debug_option} -l $LOGFILE acme "uname -n" "whoami" > ${tmp_res}
-        if [ $? != 0 ]; then
-            echo_error "### ERROR ### Did not perform to connect or read adress from acme"
-            conmux_cmd="fail"
-        fi
+    tmp_res=${command_file%.*}.res
+    echo_log "${cnx_type} connection to ${dest_addr}"
+    echo_debug "python expect_exec_cmd.py $debug $log ${cnx_type} ${dest_addr} $commands > ${tmp_res} 2>&1"
+    python expect_exec_cmd.py $debug $log ${cnx_type} ${dest_addr} $command_file > ${tmp_res} 2>&1
+    rc=$?
 
-        if [ "$conmux_cmd" != "fail" ]; then
-            echo_debug "`cat ${tmp_res}`"        
-            addr=`cat ${tmp_res} | grep -A1 "command: uname -n" | grep response | awk -F"response: " '{ print $2 }' | sed -e "s/[ \t\n]*//g"`
-            user=`cat ${tmp_res} | grep -A1 "command: whoami" | grep response | awk -F"response: " '{ print $2 }' | sed -e "s/[ \t\n]*//g"`
-        
-            ACME_ADDR=`echo "${user}@${addr}"`
-        fi
-        rm -f ${tmp_action} ${tmp_res}
-        
-    fi
-        
-    if [ "$conmux_cmd" == "fail" ]; then
-        while true; do
-            echo_question -o "-n" "Please enter an ACME adress: "
-            read ACME_ADDR
-            if [ ! -z `echo ${ACME_ADDR}` ];then break; fi
-        done
-        r="y"
+    echo_debug " => rc = $rc"
+    echo_debug " => result:"
+    echo_debug "`cat ${tmp_res}`"
+    if [ $rc -ne 0 ]; then
+        echo_warning "  => ${cnx_type} connection fails"
+        ret_code=1
     else
-        echo_log "ACME address read in ACME is set to:"
-        echo_info "${ACME_ADDR}"
-        echo_question -o "-n" "Correct? (Y|n): "
-        read r
+        echo_log "  => ${cnx_type} connection ok"
+        ret_code=0
     fi
-    if [ "$r" == "n" ];then
-        while true; do
-            echo_question -o "-n" "Please enter your new ACME adress: "
-            read ACME_ADDR
-            if [ ! -z `echo ${ACME_ADDR}` ];then break; fi
-        done
-        #newuser=`echo ${ACME_ADDR} | cut -d@ -f1`
-        newaddr=`echo ${ACME_ADDR} | cut -d@ -f2`
-        tmp_cmd=`mktemp`
-        tmp_res=`mktemp`
-        echo """
-echo $newaddr > /etc/hostname
-cat /etc/hosts | sed -e \"s/127.0.1.1\t.*/127.0.1.1\t$newaddr/g\" > /etc/hosts.new 
-mv -f /etc/hosts.new /etc/hosts
-hostname -F /etc/hostname
-uname -n
-""" >> ${tmp_cmd}
-        #execute file via conmux
-
-        echo_log "Change address of ACME"
-        if [ "$DEBUG_EN" == "yes" ]; then debug_option="-v"; fi
-        echo_debug "python expect_exec_cmd.py ${debug_option} -l $LOGFILE acme ${tmp_cmd} > ${tmp_res}"
-        python expect_exec_cmd.py ${debug_option} -l $LOGFILE acme ${tmp_cmd} > ${tmp_res}
-        #get result
-        newaddrchg=`cat ${tmp_res} | grep -A1 "command: uname -n" | grep response | awk -F"response: " '{ print $2 }' | sed -e "s/[ \t\n]*//g"`
-        ACME_ADDR=`echo "${user}@${newaddrchg}"`
-
-        echo_log "ACME address is changed to:"
-        echo_info "${ACME_ADDR}"
-
-        #rm tmp file and set ACME_ADDR
-        #rm -f ${tmp_action} ${tmp_res}
-
+    if [ "`cat ${tmp_res} | grep '### ERROR ###'`" != "" ]; then
+        echo_error "`cat ${tmp_res}`"
+        ret_code=1
     fi
-    if [ ! -f /etc/profile.d/lava_lab.sh ]; then
-        touch /etc/profile.d/lava_lab.sh
-    fi
-    if [ -z "`cat /etc/profile.d/lava_lab.sh | grep ACME_ADDR=${ACME_ADDR}`" ]; then
-        tmp_file=`mktemp`
-        echo_debug "File /etc/profile.d/lava_lab.sh: Add line "ACME_ADDR=${ACME_ADDR}""
-        echo "ACME_ADDR=${ACME_ADDR}" >> ${tmp_file}
-        sudo mv -f ${tmp_file} /etc/profile.d/lava_lab.sh 
-        echo_debug "END acme_addr"
-    fi
+
+    echo_debug "expect_exec_cmd END"
+    return $ret_code
 
 }
 
+###################################################################################
+## check if environment variable upper(<device_name>)_ADDR exist or not
+#  Purpose a default upper(<device_name>)_ADDR to user that shall validate or enter a new one
+#  Put the validated upper(<device_name>)_ADDR in /etc/profile.d/lava_lab.sh that will contains some setup dedicated env variable
+###################################################################################
+board_addr()
+{
+    echo_debug "START board_addr $1"
+
+    board=$1
+    board_addr_name="`echo ${board//-/_} | sed 's/./\U&/g'`_ADDR"
+    board_ip_name="`echo ${board//-/_} | sed 's/./\U&/g'`_IP"
+    echo_debug "board_addr_name = ${board_addr_name}"
+
+    if [ -z "`printenv | grep ${board_addr_name}`" ];then
+        echo_log "Get address of ${board}"
+
+cat << EOF > commands.cmd
+ls
+whoami
+uname -n
+ifconfig eth0 | grep 'inet addr' | sed 's/\s\+/ /g' | cut -d: -f2 | cut -d' ' -f1
+EOF
+
+        expect_exec_cmd "conmux-console" "${board}" "commands.cmd"
+        rc=$?
+ 
+        if [ $rc -eq 0 ]; then
+            echo_debug "`cat commands.res`"
+            addr=$(cat commands.res | sed -e '1,/command: uname/d' -e '/rc/,$d' -e 's/response: //')
+            user=$(cat commands.res | sed -e '1,/command: whoami/d' -e '/rc/,$d' -e 's/response: //')
+            ip=$(cat commands.res | sed -e '1,/command: ifconfig/d' -e '/rc/,$d' -e 's/response: //')
+
+            eval ${board_addr_name}="${user}@${addr}"
+            echo_debug "${board_addr_name} = ${!board_addr_name}"
+            eval ${board_ip_name}="${ip}"
+            echo_debug "${board_ip_name} = ${!board_ip_name}"
+
+            echo_log "Address read in ${board} is set to:"
+            echo_info "${!board_addr_name} (${!board_ip_name})"
+            echo_question -o "-n" "Correct? (Y|n): "
+            read resp
+
+            if [ "$resp" == "n" ];then
+                while true; do
+                    echo_question -o "-n" "Please enter your new address for ${board}: "
+                    read addr
+                    eval ${board_addr_name}="${addr}"
+                    echo_debug "${board_addr_name} = ${!board_addr_name}"
+                    if [ ! -z `echo ${!board_addr_name}` ];then break; fi
+                done
+
+                newaddr=`echo ${!board_addr_name} | cut -d@ -f2`
+
+                echo_log "Change address of ${board}"
+cat << EOF > commands.cmd
+echo $newaddr > /etc/hostname
+cat /etc/hosts | sed -e "s/127.0.1.1\t.*/127.0.1.1\t$newaddr/g" > /etc/hosts.new 
+mv -f /etc/hosts.new /etc/hosts
+hostname -F /etc/hostname
+uname -n
+EOF
+
+                expect_exec_cmd "conmux-console" "${board}" "commands.cmd"
+                rc=$?
+
+                if [ $rc -eq 0 ]; then
+                    echo_debug "`cat commands.res`"
+                    newaddrchg=$(cat commands.res | sed -e '1,/command: uname/d' -e '/rc/,$d' -e 's/response: //')
+                    eval ${board_addr_name}="${user}@${newaddrchg}"
+                    echo_log "${board} address is changed to:"
+                    echo_info "${!board_addr_name}"
+                else
+                    echo_warning "### WARNING ### ${board} address is not changed !"
+                fi
+
+            fi
+
+        else
+            while true; do
+                echo_question -o "-n" "Please enter manually an address for ${board}: "
+                read addr
+                eval ${board_addr_name}="${addr}"
+                echo_debug "${board_addr_name} = ${!board_addr_name}"
+                if [ ! -z `echo ${!board_addr_name}` ];then break; fi
+            done
+        fi
+    fi
+
+    if [ ! -f /etc/profile.d/lava_lab.sh ]; then
+        touch /etc/profile.d/lava_lab.sh
+    fi
+
+    test_line="${board_addr_name}=${!board_addr_name}"
+    if [ -z "`cat /etc/profile.d/lava_lab.sh | grep ${test_line}`" ]; then
+        tmp_file=`mktemp`
+        echo_debug "File /etc/profile.d/lava_lab.sh: Add line \"${test_line}\""
+        echo "${board_addr_name}=${!board_addr_name}" >> ${tmp_file}
+        sudo mv -f ${tmp_file} /etc/profile.d/lava_lab.sh 
+        echo_debug "END board_addr"
+    fi
+
+}
 ###################################################################################
 ## list boards connected to ACME
 #  Purpose a default BOARD_LIST to user that shall validate or enter a new one
@@ -181,17 +231,18 @@ board_list()
         fi
     done
 
-    echo "NAME TYPE TTY ACME_PORT BAUD_RATE" > /tmp/lava_board
+    echo "NAME TYPE TTY ACME_PORT BAUD_RATE ADDR IP" > /tmp/lava_board
     echo_debug "DEVICE_LIST:\n ${DEVICE_LIST}"
     for d in ${DEVICE_LIST}; do
-        echo_debug "define device type for $d"
-        if [ "`echo $d | grep "acme:"`" != "" ]; then
+        device_name=`echo $d | awk -F: '{ print $1 }'`
+        echo_debug "define device type for $device_name"
+        if [ "$device_name" == "acme" ]; then
             echo_debug " => Ignore acme"
-            DEVICE_LIST=${DEVICE_LIST//$d/$d::}
-            echo "$d:-:-" | awk -F: '{ print $1 " " $5 " " $2 " " $6 " " $4 }' >> /tmp/lava_board
+            DEVICE_LIST=${DEVICE_LIST//$d/$d:beaglebone-black::${ACME_ADDR}:${ACME_IP}}
+            echo "$d:beaglebone-black:-:${ACME_ADDR}:${ACME_IP}" | awk -F: '{ print $1 " " $5 " " $2 " " $6 " " $4 " " $7 " " $8 }' >> /tmp/lava_board
             continue
         fi
-        echo_question "Choose device type associated to `echo $d | awk -F: '{ print $1 }'`"
+        echo_question "Choose device type associated to ${device_name}"
         #call the get_answer utils
         GET_ANSWER_RESULT=""
         echo_debug "get_answer \"$buffer\""
@@ -205,11 +256,33 @@ board_list()
             else echo " => Incorrect value"
             fi
         done
+ 
+        echo_log "ReStart $d"
+cat << EOF > commands.cmd
+dut-hard-reset ${acme_port}
+EOF
+        expect_exec_cmd "conmux-console" "acme" "commands.cmd"
+        rc=$?
 
-        newd="$d:${GET_ANSWER_RESULT}:${acme_port}"
-        echo "$newd" | awk -F: '{ print $1 " " $5 " " $2 " " $6 " " $4 }' >> /tmp/lava_board
+        if [ $rc -eq 0 ]; then
+            i=0
+            while [ $i -lt 30 ]; do
+                sleep 1
+                echo_log -o "-ne" "."
+                i=$(($i + 1))
+            done
+            board_addr ${device_name}
 
-        DEVICE_LIST=${DEVICE_LIST//$d/$newd}
+            board_addr_name="`echo ${board//-/_} | sed 's/./\U&/g'`_ADDR"
+            board_ip_name="`echo ${board//-/_} | sed 's/./\U&/g'`_IP"
+            newd="$d:${GET_ANSWER_RESULT}:${acme_port}:${!board_addr_name}:${!board_ip_name}"
+            echo "$newd" | awk -F: '{ print $1 " " $5 " " $2 " " $6 " " $4 " " $7 " " $8 }' >> /tmp/lava_board
+
+            DEVICE_LIST=${DEVICE_LIST//$d/$newd}
+        fi
+
+
+
     done
 
     echo_log "BOARDS list set to:"
@@ -223,11 +296,239 @@ board_list()
     echo_debug "END board_list"
 }
 
+
 ###################################################################################
-create_conmux_config()
+## check an ssh cnx to dest_addr
+#  if cnx succeed, get its user@address with command 'whoami' and 'uname -n'
+###################################################################################
+check_ssh_cnx()
+{
+cat << EOF > commands.cmd
+ls
+whoami
+uname -n
+EOF
+
+    expect_exec_cmd "ssh" "$1" commands.cmd
+    rc=$?
+    
+    return $rc
+}
+
+###################################################################################
+## create ssh system between lab, acme and dut
+###################################################################################
+copy_sshkey()
+{
+    echo_debug "copy_sshkey START"
+    local keyfile="~/.ssh/id_rsa.pub"
+
+    local opt=`getopt -o k: --long key: -- "$@"`
+    if [ $? != 0 ] ; then echo "Terminating..." >&2 ; exit 1 ; fi
+
+    eval set -- "$opt"
+
+    while true ; do
+        case "$1" in
+            -k|--key) 
+                keyfile="$2"; shift 2;;
+            --) shift ; break ;;
+            *) echo "Internal error!" ; exit 1 ;;
+        esac
+    done
+
+    local destination=$1
+
+
+    if [ -n "`echo $destination | grep ':'`" ]; then
+        dest_conmux=`echo $destination | cut -d: -f1`
+        dest_addr=`echo $destination | cut -d: -f2`
+    else
+        dest_conmux=""
+        dest_addr="$destination"
+    fi
+
+    #check if key exist for lab, create it if not
+    echo_log "Check if local (`uname -n`) rsa public key exist"
+    if [ ! -f $keyfile ]; then
+        echo_log "  => No"
+        echo_log "Create local (`uname -n`) rsa public key"
+        ssh-keygen -N "" -f $keyfile
+        echo_log "  => Done"
+    fi
+    echo_log "  => OK"
+
+    local_key=`cat $keyfile`
+
+    device_user=`echo $dest_addr | awk -F'@' '{ print $1}'`
+    device_host=`echo $dest_addr | awk -F'@' '{ print $1 }'`
+
+    #check ssh connection
+    check_ssh_cnx "${dest_addr}"
+
+    #if ssh connection does not work, need to pass key via conmux
+    if [ $? -eq 0 ]; then 
+        cnx_type="ssh"
+        cnx_dest="${dest_addr}"
+    else                 
+        cnx_type="conmux-console"
+        if [ -z "$dest_conmux" ]; then
+            echo_error "ssh connection does not work for ${dest_addr}"
+            echo_error "conmux device name is mandatory"
+            usage
+            exit 1
+        else
+            cnx_dest="${dest_conmux}"
+        fi
+    fi
+
+    
+    #give authorized key via conmux
+    echo_log "Copy local key via '${cnx_type} ${cnx_dest}'"
+    
+cat << EOF > commands.cmd
+echo '${local_key}' > tmp.tmp 
+if [ -f ~/.ssh/authorized_keys ];then echo 'Exist authorized_keys';else cat tmp.tmp > ~/.ssh/authorized_keys; echo 'Create authorized_keys'; fi
+k=`cat tmp.tmp`; if [ -z "`cat ~/.ssh/authorized_keys | grep \"$k\"`" ]; then cat tmp.tmp >> ~/.ssh/authorized_keys; echo 'Append authorized_keys'; else echo 'Do nothing';fi
+EOF
+
+    expect_exec_cmd "${cnx_type}" "${cnx_dest}" commands.cmd
+    rc=$?
+
+    if [ $rc -ne 0 ]; then
+        echo_error "### ERROR ### Did not perform to add rsa key to ${device_name}"
+    else
+        echo_log "    => Copy Done"
+
+        echo_log "Check ssh connection from lab to ${dest_addr}"
+        check_ssh_cnx "${dest_addr}"
+        if [ $? != 0 ]; then echo_error "### ERROR ### ssh connection does not work for ${dest_addr}"
+        else                 echo_log "ssh connection success for ${dest_addr}"
+        fi
+    fi
+
+    echo_debug "copy_sshkey END"
+}
+
+
+
+
+
+
+###################################################################################
+## create ssh system between lab, acme and dut
+###################################################################################
+create_ssh()
+{
+    echo_debug "START create_ssh"
+
+    #check if key exist for lab, create it if not
+    echo_debug "check if pub key exist in lab"
+    if [ ! -f ~/.ssh/id_rsa.pub ]; then
+        echo_log "Create pub key for lab"
+        ssh-keygen -N ""        
+    fi
+    lab_key=`cat ~/.ssh/id_rsa.pub`
+    #check if lab key is in authorized key of each device, add it if not
+    for d in ${DEVICE_LIST}; do
+        device_name=`echo $d | awk -F: '{ print $1 }'`
+        device_user=`echo $d | awk -F: '{ print $7 }' | awk -F'@' '{ print $1}'`
+        device_ip=`echo $d | awk -F: '{ print $8 }'`
+
+        if [ ${device_name}"" == "acme" ]; then
+            acme_device_user=${device_user}
+            acme_device_ip=${device_ip}
+        fi
+
+        #copy lab key to remote
+        #Note: ssh-copy-id does not work, so need to recreate a script to do it
+        echo_log "Copy local (`uname -n`) pub key to ${device_name} "
+        copy_sshkey ${device_name}:${device_user}@${device_ip}
+
+        #copy dut key to acme
+        if [ "${device_name}" != "acme" ]; then
+            echo_log "Create pub key of ${device_name}"
+
+cat << EOF > commands.cmd
+if [ ! -f ~/.ssh/id_rsa.pub ]; then ssh-keygen -N "";echo "Key Created"; else echo "Key Already exist"; fi
+EOF
+
+            expect_exec_cmd "ssh" "${device_user}@${device_ip}" commands.cmd
+            rc=$?
+
+            if [ $rc -ne 0 ]; then 
+                echo_error "  => Fails"
+            else
+                echo_log "  => Done"
+
+                echo_log "Get pub key from ${device_name}"
+                echo_debug "scp ${device_user}@${device_ip}:~/.ssh/id_rsa.pub ${device_name}_id_rsa.pub"
+                scp ${device_user}@${device_ip}:~/.ssh/id_rsa.pub ${device_name}_id_rsa.pub
+                if [ $? != 0 ]; then 
+                    echo_error "  => Fail"
+                else
+                    echo_log "  => Done"
+
+                    echo_log "Copy pub key onto acme"
+                    copy_sshkey -k ${device_name}_id_rsa.pub acme:${acme_device_user}@${acme_device_ip}
+                    if [ $? -ne 0 ]; then
+                        echo_error "  => Fail"
+                    else
+                        echo_log "  => Done"
+
+                        echo_log "Copy expect_exec_cmd.py to ${device_name} "
+                        echo_debug "scp expect_exec_cmd.py ${device_user}@${device_ip}:expect_exec_cmd.py"
+                        scp expect_exec_cmd.py ${device_user}@${device_ip}:expect_exec_cmd.py
+                        if [ $? -ne 0 ]; then 
+                            echo_error "  => Fail"
+
+                        else 
+                            echo_log "  => Done"
+
+                            echo_log "Install python and pexpect on ${device_name}"
+cat << EOF > commands.cmd
+sudo apt-get install python
+sudo apt-get install python-pexpect
+EOF
+
+                            expect_exec_cmd "ssh" "${device_user}@${device_ip}" commands.cmd
+                            rc=$?
+                            if [ $? != 0 ]; then 
+                                echo_error "  => Fail"
+                            else                 
+                                echo_log "  => Done"
+
+                                echo_log "Check ssh connection from ${device_name} to acme"
+
+cat << EOF > commands.cmd
+python expect_exec_cmd.py ssh ${acme_device_user}@${acme_device_ip} "ls" "uname -n" "whoami"
+EOF
+
+                                expect_exec_cmd "ssh" "${device_user}@${device_ip}" commands.cmd
+                                rc=$?
+
+                                if [ $? != 0 ]; then 
+                                    echo_error "  => Fail"
+                                else                 
+                                    echo_log "  => Done"
+                                fi
+                            fi
+                        fi
+                    fi
+                fi
+            fi        
+        fi
+            
+    done
+
+    echo_debug "END create_ssh"
+}
+
+###################################################################################
+create_board_config()
 ###################################################################################
 {
-    echo_debug "START create_conmux_config"
+    echo_debug "START create_board_config"
 
     #create the acme conmux config file
     echo_log "Create ACME conmux config"
@@ -266,6 +567,12 @@ command 'off' 'Power off ${board}' 'ssh ${ACME_ADDR} dut-switch-off ${port}'
 command 'on' 'Power on ${board}' 'ssh ${ACME_ADDR} dut-switch-on ${port}'""" >> $tmpfile
         sudo cat $tmpfile >> /etc/conmux/${board}.cf
 
+        echo_debug "restart conmux service"
+        sudo stop conmux
+        sleep 1
+        sudo start conmux
+        sleep 2
+
         echo_log "Create lava conf of ${board}"
         debug_option=""
         if [ "$DEBUG_EN" == "yes" ]; then debug_option="-v"; fi
@@ -302,7 +609,7 @@ command 'on' 'Power on ${board}' 'ssh ${ACME_ADDR} dut-switch-on ${port}'""" >> 
     done
     IFS=$SAVE_IFS
 
-    echo_debug "END create_conmux_config"
+    echo_debug "END create_board_config"
 }
 
 ###################################################################################
@@ -361,6 +668,7 @@ create_board_conf()
     VERSION="0.2"
 
     LOGFILE="create-boards-conf.log"
+    DEBUG=""
     DEBUG_EN="no"
     DEBUG_LVL=0
 
@@ -380,10 +688,13 @@ create_board_conf()
 
     #check or define define acme_addr
     echo_debug "CALL acme_addr"
-    acme_addr 
+    #acme_addr
+    board_addr "acme" 
     #check or define boardlist
     echo_debug "CALL board_list"
     board_list
+
+    create_ssh
 
     #clean previous config files if exist
     echo_log "Cleaning /etc/lava-dispatcher/devices"
@@ -394,8 +705,8 @@ create_board_conf()
     sudo rm -f /etc/lava-dispatcher/devices/*.conf
 
     #create the acme conmux config file
-    echo_debug "CALL create_conmux_config"
-    create_conmux_config    
+    echo_debug "CALL create_board_config"
+    create_board_config    
 
     echo_warning "if acme is integrated into pdudaemon, then setup lavapdu.conf with 'pdu' as acme type"
     echo_debug "END create_board_conf"

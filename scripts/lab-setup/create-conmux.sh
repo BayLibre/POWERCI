@@ -668,12 +668,6 @@ create_conmux()
         echo_error "### ERROR ### ./create-boards-conf.sh"
     fi
 
-    echo_debug "restart conmux service"
-    sudo stop conmux
-    sleep 1
-    sudo start conmux
-    sleep 2
-
     echo_debug "END create_conmux"
     
 }
