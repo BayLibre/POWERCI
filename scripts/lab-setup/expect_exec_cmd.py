@@ -184,9 +184,10 @@ class expect_ssh(expect_generic):
         self.newline='\r\n'
         self.prompt='#'
 
-    def connect(self):
+    def connect(self,password=None):
         i = self.expect(["ssh: Could not resolve hostname (.*): Name or service not known",
                   "Are you sure you want to continue connecting \(yes/no\)\?",
+                  "password:",
                   "# "])
         if i == 0:
             logging.error("### ERROR ### Name or service not known: %s" % self.p.match.group(1))
@@ -207,6 +208,24 @@ class expect_ssh(expect_generic):
                 logging.debug(" => wait for commands")
 
         elif i == 2:
+            while True:
+                if password: self.p.sendline(password)
+                else:        self.p.sendline("")
+                j = self.expect(["Permission denied","password:","# "])
+                if j==0:
+                    logging.error("### ERROR ### Permission denied, check if password is correct")
+                    print "### ERROR ### Permission denied, check if password is correct"
+                    sys.exit(1)
+                elif j==1:
+                    continue
+                elif j==2:
+                    logging.info(' => Connection Done')
+                    logging.debug(" => prompt received")
+                    logging.debug(" => wait for commands")
+                    break
+            
+
+        elif i == 3:
             logging.info(' => Connection Done')
             logging.debug(" => prompt received")
             logging.debug(" => wait for commands")
@@ -227,6 +246,55 @@ class expect_ssh(expect_generic):
         i=self.expect(["Connection to (.*) closed."])
         logging.info(' => Done')
 
+class expect_scp(expect_generic):
+    def __init__(self,addr,logfile):
+        self.addr=addr
+        expect_generic.__init__(self,'scp',self.addr,logfile)
+        self.newline='\r\n'
+        self.prompt='#'
+
+    def connect(self,password=None):
+        i = self.expect(["ssh: Could not resolve hostname (.*): Name or service not known",
+                  "Are you sure you want to continue connecting \(yes/no\)\?",
+                  "password:",
+                  "# "])
+        if i == 0:
+            logging.error("### ERROR ### Name or service not known: %s" % self.p.match.group(1))
+            print "### ERROR ### Name or service not known: %s" % self.p.match.group(1)
+            sys.exit(1)
+
+        elif i == 1:
+            self.p.sendline("yes")
+            j = self.expect(["Host key verification failed.","# "])
+            if j == 0:
+                logging.error("### ERROR ### Host key verification failed")
+                print "### ERROR ### Host key verification failed"
+                sys.exit(1)
+            
+            elif j == 1:
+                logging.info(' => Connection Done')
+                logging.debug(" => prompt received")
+                logging.debug(" => wait for commands")
+
+        elif i == 2:
+            self.p.sendline("yes")
+
+        elif i == 3:
+            logging.info(' => Connection Done')
+            logging.debug(" => prompt received")
+            logging.debug(" => wait for commands")
+
+        self.p.setwinsize(1000,1000)
+
+        self.p.sendline("\r")
+        res = self.expect([self.newline+"#",self.newline+"(.*)# "])
+        if res == 1:
+            elems=self.p.match.group(1).split(self.newline)
+            self.prompt=elems[len(elems)-1]+"#"
+
+
+    def disconnect(self):
+        pass
 
 def expect_exec_cmd(tool,mandatory_args,args):
     if args.verbosity: verbosity_level=logging.DEBUG
@@ -253,16 +321,16 @@ def conmux_exec_cmd(args):
     return expect_exec_cmd(expect_conmux,mandatory_args,args)
 
 def ssh_exec_cmd(args):
-    mandatory_args=[args.addr,None]
+    mandatory_args=[args.addr,args.password]
     return expect_exec_cmd(expect_ssh,mandatory_args,args)
 
-def ssh_copy_id(args):
-    mandatory_args=[args.addr,None]
-    return expect_exec_cmd(expect_ssh,mandatory_args,args)
+def scp_exec_cmd(args):
+    mandatory_args=[args.addr,args.password]
+    return expect_exec_cmd(expect_scp,mandatory_args,args)
 
 def main():
     #usage = "Usage: %prog [-v<N>][-l logfile][-u user[:password]] device_name CMD [CMD ...]"
-    description = "execute commands on device via conmux-console"
+    description = "Type expect_exec_cmd.py <tool_name> -h|--help for more help on <tool_name>"
 
     #parser = argparse.ArgumentParser(usage=usage, description=description)
     parser = argparse.ArgumentParser(description=description)
@@ -275,12 +343,12 @@ def main():
     parser.add_argument("--version",         action="version", version='Version v0.1', 
                        help="print version")
 
-    subparsers=parser.add_subparsers(help="tool used for connection")
+    subparsers=parser.add_subparsers(help="tool_name used for connection")
     parser_conmux=subparsers.add_parser('conmux-console', help="connection via conmux-console.")
     parser_conmux.add_argument('device',  metavar='device', 
                         help="device_name to connect")
     parser_conmux.add_argument('-u', "--user",      action="store",      dest='user', default="root", 
-                        help="user[:password] for connection, default is root")
+                        help="user[:password] for connection, default user is root")
     parser_conmux.add_argument('commands', metavar='CMD', nargs='+',
                        help="command(s) (can be file name) to be executed")
     parser_conmux.set_defaults(func=conmux_exec_cmd)
@@ -288,14 +356,22 @@ def main():
     parser_ssh=subparsers.add_parser('ssh', help="connection via ssh.")
     parser_ssh.add_argument('addr',  metavar='addr', 
                         help="addr to connect")
+    parser_ssh.add_argument('-p', "--password",      action="store",      dest='password', 
+                        help="password used to connect")
     parser_ssh.add_argument('commands', metavar='CMD', nargs='+',
                        help="command(s) (can be file name) to be executed")
     parser_ssh.set_defaults(func=ssh_exec_cmd)
 
-    parser_ssh=subparsers.add_parser('ssh_copy_id', help="copy ssh pub key")
-    parser_ssh.add_argument('addr',  metavar='addr', 
+    parser_scp=subparsers.add_parser('scp', help="copy file via ssh.")
+    parser_scp.add_argument('addr',  metavar='addr', 
                         help="addr to connect")
-    parser_ssh.set_defaults(func=ssh_copy_id)
+    parser_scp.add_argument('-p', "--password",      action="store",      dest='password', 
+                        help="password used to connect")
+    parser_scp.add_argument('src', metavar='SRC',
+                       help="local source file to be copied")
+    parser_scp.add_argument('dst', metavar='DST',
+                       help="remote destination filename and path")
+    parser_scp.set_defaults(func=scp_exec_cmd)
 
     args=parser.parse_args()
     args.func(args)

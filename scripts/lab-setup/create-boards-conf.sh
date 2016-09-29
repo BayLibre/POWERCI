@@ -80,8 +80,9 @@ expect_exec_cmd()
     local command_file="$3"
 
     tmp_res=${command_file%.*}.res
-    echo_log "${cnx_type} connection to ${dest_addr}"
-    echo_debug "python expect_exec_cmd.py $debug $log ${cnx_type} ${dest_addr} $commands > ${tmp_res} 2>&1"
+    echo_debug "python expect_exec_cmd.py $debug $log ${cnx_type} ${dest_addr} $command_file > ${tmp_res} 2>&1"
+    echo_debug "with $command_file containing:"
+    echo_debug "`cat $command_file`"
     python expect_exec_cmd.py $debug $log ${cnx_type} ${dest_addr} $command_file > ${tmp_res} 2>&1
     rc=$?
 
@@ -89,14 +90,14 @@ expect_exec_cmd()
     echo_debug " => result:"
     echo_debug "`cat ${tmp_res}`"
     if [ $rc -ne 0 ]; then
-        echo_warning "  => ${cnx_type} connection fails"
+        echo "### WARNING ### command execution fails" >> ${tmp_res}
+        #echo_warning "`cat ${tmp_res}`"
         ret_code=1
     else
-        echo_log "  => ${cnx_type} connection ok"
         ret_code=0
     fi
     if [ "`cat ${tmp_res} | grep '### ERROR ###'`" != "" ]; then
-        echo_error "`cat ${tmp_res}`"
+        #echo_error "`cat ${tmp_res}`"
         ret_code=1
     fi
 
@@ -304,9 +305,7 @@ EOF
 check_ssh_cnx()
 {
 cat << EOF > commands.cmd
-ls
-whoami
-uname -n
+pwd
 EOF
 
     expect_exec_cmd "ssh" "$1" commands.cmd
@@ -321,7 +320,7 @@ EOF
 copy_sshkey()
 {
     echo_debug "copy_sshkey START"
-    local keyfile="~/.ssh/id_rsa.pub"
+    local keyfile=`echo ~/.ssh/id_rsa`
 
     local opt=`getopt -o k: --long key: -- "$@"`
     if [ $? != 0 ] ; then echo "Terminating..." >&2 ; exit 1 ; fi
@@ -339,75 +338,113 @@ copy_sshkey()
 
     local destination=$1
 
-
     if [ -n "`echo $destination | grep ':'`" ]; then
         dest_conmux=`echo $destination | cut -d: -f1`
-        dest_addr=`echo $destination | cut -d: -f2`
+        dest_user=`echo $destination | cut -d: -f2 | cut -d@ -f1`
+        dest_addr=`echo $destination | cut -d: -f2 | cut -d@ -f2`
+        dest_ip=`echo $destination | cut -d: -f2 | cut -d@ -f3`
     else
         dest_conmux=""
-        dest_addr="$destination"
+        dest_user=`echo $destination | cut -d@ -f1`
+        dest_addr=`echo $destination | cut -d@ -f2`
+        dest_ip=`echo $destination | cut -d@ -f3`
     fi
 
     #check if key exist for lab, create it if not
-    echo_log "Check if local (`uname -n`) rsa public key exist"
-    if [ ! -f $keyfile ]; then
-        echo_log "  => No"
-        echo_log "Create local (`uname -n`) rsa public key"
+    if [ ! -f "$keyfile.pub" ]; then
+        echo_log "    => Create `uname -n` rsa key"
         ssh-keygen -N "" -f $keyfile
-        echo_log "  => Done"
     fi
-    echo_log "  => OK"
 
-    local_key=`cat $keyfile`
-
-    device_user=`echo $dest_addr | awk -F'@' '{ print $1}'`
-    device_host=`echo $dest_addr | awk -F'@' '{ print $1 }'`
+    public_key=`cat $keyfile.pub`
 
     #check ssh connection
-    check_ssh_cnx "${dest_addr}"
-
-    #if ssh connection does not work, need to pass key via conmux
-    if [ $? -eq 0 ]; then 
-        cnx_type="ssh"
-        cnx_dest="${dest_addr}"
-    else                 
-        cnx_type="conmux-console"
-        if [ -z "$dest_conmux" ]; then
-            echo_error "ssh connection does not work for ${dest_addr}"
-            echo_error "conmux device name is mandatory"
-            usage
-            exit 1
+    echo_log "    => Check if ${dest_addr} is pingable"
+    dest_addr_ext=""
+    ping ${dest_addr} -c 1 > /dev/null 2>&1
+    if [ $? -ne 0 ]; then
+        ping ${dest_addr}.local -c 1 > /dev/null 2>&1
+        if [ $? -ne 0 ]; then
+            ping ${dest_ip} -c 1 > /dev/null 2>&1
+            if [ $? -ne 0 ]; then
+                #nothing is pingable, use conmux
+                cnx_type="conmux-console"
+                if [ -z "$dest_conmux" ]; then
+                    echo_error "ssh connection does not work for ${dest_addr}"
+                    echo_error "conmux device name is mandatory"
+                    usage
+                    exit 1
+                else
+                    cnx_dest="${dest_conmux}"
+                fi
+            else
+                #only ip is pingable (addr issue) use ssh with ip
+                cnx_type="ssh"
+                cnx_dest="${dest_user}@${dest_ip}"
+            fi
         else
-            cnx_dest="${dest_conmux}"
+            #addr.local is pingable, use ssh with addr.local
+            dest_addr_ext=".local"
+            cnx_type="ssh"
+            cnx_dest="${dest_user}@${dest_addr}${dest_addr_ext}"
+        fi
+    else
+        cnx_type="ssh"
+        cnx_dest="${dest_user}@${dest_addr}"     
+    fi
+
+    if [ "${cnx_type}" == "ssh" ]; then
+        echo_log "    => Check ssh connection from `uname -n` to ${dest_ip} already exist"
+        check_ssh_cnx "${cnx_dest}"
+        
+        if [ $? -ne 0 ]; then
+            cnx_type="conmux-console"
+            if [ -z "$dest_conmux" ]; then
+                echo_error "ssh connection does not work for ${dest_addr}"
+                echo_error "conmux device name is mandatory"
+                usage
+                exit 1
+            else
+                cnx_dest="${dest_conmux}"
+            fi
         fi
     fi
 
-    
     #give authorized key via conmux
-    echo_log "Copy local key via '${cnx_type} ${cnx_dest}'"
-    
+    ret_code=0
+    echo_log "    => Copy $keyfile.pub key via '${cnx_type}' to '${cnx_dest}'"
+
+    key_user_addr=`awk '{ print $NF }' $keyfile.pub`
+
 cat << EOF > commands.cmd
-echo '${local_key}' > tmp.tmp 
-if [ -f ~/.ssh/authorized_keys ];then echo 'Exist authorized_keys';else cat tmp.tmp > ~/.ssh/authorized_keys; echo 'Create authorized_keys'; fi
-k=`cat tmp.tmp`; if [ -z "`cat ~/.ssh/authorized_keys | grep \"$k\"`" ]; then cat tmp.tmp >> ~/.ssh/authorized_keys; echo 'Append authorized_keys'; else echo 'Do nothing';fi
+echo '${public_key}' > tmp.tmp
+if [ -f ".ssh/authorized_keys" ];then sed '/${key_user_addr}/d' .ssh/authorized_keys > .ssh/authorized_keys.1; mv .ssh/authorized_keys.1 .ssh/authorized_keys; fi
+cat tmp.tmp >> .ssh/authorized_keys; fi
 EOF
 
     expect_exec_cmd "${cnx_type}" "${cnx_dest}" commands.cmd
     rc=$?
 
     if [ $rc -ne 0 ]; then
-        echo_error "### ERROR ### Did not perform to add rsa key to ${device_name}"
+        echo_error "### ERROR ### Fail to copy public key to ${device_name}"
+        ret_code=1
     else
-        echo_log "    => Copy Done"
+        echo_log "    => Check ssh connection from `uname -n` to ${dest_addr} after key copy"
+        check_ssh_cnx "${dest_user}@${dest_ip}"
+        rc1=$?
+        check_ssh_cnx "${dest_user}@${dest_addr}${dest_addr_ext}"
+        rc2=$?
 
-        echo_log "Check ssh connection from lab to ${dest_addr}"
-        check_ssh_cnx "${dest_addr}"
-        if [ $? != 0 ]; then echo_error "### ERROR ### ssh connection does not work for ${dest_addr}"
-        else                 echo_log "ssh connection success for ${dest_addr}"
+        if [ $rc1 -ne 0 ] && [ $rc2 -ne 0 ]; then 
+            echo_error "### ERROR ### ssh connection does not work for ${dest_addr}"
+            ret_code=1
         fi
     fi
 
     echo_debug "copy_sshkey END"
+    echo_debug "copy_sshkey ret_code=${ret_code}"
+    return ${ret_code}
+
 }
 
 
@@ -421,71 +458,63 @@ EOF
 create_ssh()
 {
     echo_debug "START create_ssh"
+    echo_log "Create SSH connection between lab(`uname -n`), acme and dut"
 
-    #check if key exist for lab, create it if not
-    echo_debug "check if pub key exist in lab"
-    if [ ! -f ~/.ssh/id_rsa.pub ]; then
-        echo_log "Create pub key for lab"
-        ssh-keygen -N ""        
-    fi
     lab_key=`cat ~/.ssh/id_rsa.pub`
     #check if lab key is in authorized key of each device, add it if not
     for d in ${DEVICE_LIST}; do
         device_name=`echo $d | awk -F: '{ print $1 }'`
         device_user=`echo $d | awk -F: '{ print $7 }' | awk -F'@' '{ print $1}'`
+        device_addr=`echo $d | awk -F: '{ print $7 }' | awk -F'@' '{ print $2}'`
         device_ip=`echo $d | awk -F: '{ print $8 }'`
 
         if [ ${device_name}"" == "acme" ]; then
             acme_device_user=${device_user}
+            acme_device_addr=${device_addr}
             acme_device_ip=${device_ip}
         fi
 
         #copy lab key to remote
         #Note: ssh-copy-id does not work, so need to recreate a script to do it
-        echo_log "Copy local (`uname -n`) pub key to ${device_name} "
-        copy_sshkey ${device_name}:${device_user}@${device_ip}
+        echo_log "    Copy `uname -n` public key to ${device_addr}"
+        copy_sshkey ${device_name}:${device_user}@${device_addr}@${device_ip}
+        if [ $? -eq 0 ]; then echo_log "    Done copy `uname -n` public key to ${device_addr}"; fi
 
         #copy dut key to acme
         if [ "${device_name}" != "acme" ]; then
-            echo_log "Create pub key of ${device_name}"
+            echo_log "    Copy ${device_name} public key to acme"
+
+            echo_log "    => Check and Create pub key of ${device_name}"
 
 cat << EOF > commands.cmd
-if [ ! -f ~/.ssh/id_rsa.pub ]; then ssh-keygen -N "";echo "Key Created"; else echo "Key Already exist"; fi
+if [ ! -f ".ssh/id_rsa.pub" ]; then ssh-keygen -N "" -f ".ssh/id_rsa"; fi
 EOF
 
             expect_exec_cmd "ssh" "${device_user}@${device_ip}" commands.cmd
             rc=$?
 
             if [ $rc -ne 0 ]; then 
-                echo_error "  => Fails"
+                echo_error "Public key for ${device_name} does not exist and creation fails"
             else
-                echo_log "  => Done"
-
-                echo_log "Get pub key from ${device_name}"
+                echo_log "    => Get pub key from ${device_name}"
                 echo_debug "scp ${device_user}@${device_ip}:~/.ssh/id_rsa.pub ${device_name}_id_rsa.pub"
                 scp ${device_user}@${device_ip}:~/.ssh/id_rsa.pub ${device_name}_id_rsa.pub
                 if [ $? != 0 ]; then 
-                    echo_error "  => Fail"
+                    echo_error "Fail to copy public key of ${device_name} to acme"
                 else
-                    echo_log "  => Done"
-
-                    echo_log "Copy pub key onto acme"
-                    copy_sshkey -k ${device_name}_id_rsa.pub acme:${acme_device_user}@${acme_device_ip}
+                    echo_log "    => Copy pub key onto acme"
+                    copy_sshkey -k ${device_name}_id_rsa acme:${acme_device_user}@${acme_device_addr}@${acme_device_ip}
                     if [ $? -ne 0 ]; then
-                        echo_error "  => Fail"
+                        echo_error "Fail to copy public key of ${device_name} to acme"
                     else
-                        echo_log "  => Done"
-
-                        echo_log "Copy expect_exec_cmd.py to ${device_name} "
+                        echo_debug "    => Copy script expect_exec_cmd.py to ${device_name} "
                         echo_debug "scp expect_exec_cmd.py ${device_user}@${device_ip}:expect_exec_cmd.py"
                         scp expect_exec_cmd.py ${device_user}@${device_ip}:expect_exec_cmd.py
                         if [ $? -ne 0 ]; then 
-                            echo_error "  => Fail"
+                            echo_error "Fail to check ssh cnx from ${device_name} to acme"
 
                         else 
-                            echo_log "  => Done"
-
-                            echo_log "Install python and pexpect on ${device_name}"
+                            echo_debug "    => Install python and pexpect on ${device_name}"
 cat << EOF > commands.cmd
 sudo apt-get install python
 sudo apt-get install python-pexpect
@@ -494,23 +523,24 @@ EOF
                             expect_exec_cmd "ssh" "${device_user}@${device_ip}" commands.cmd
                             rc=$?
                             if [ $? != 0 ]; then 
-                                echo_error "  => Fail"
+                                echo_error "Fail to check ssh cnx from ${device_name} to acme"
                             else                 
-                                echo_log "  => Done"
-
-                                echo_log "Check ssh connection from ${device_name} to acme"
+                                echo_log "    => Check ssh connection from ${device_name} to acme"
 
 cat << EOF > commands.cmd
-python expect_exec_cmd.py ssh ${acme_device_user}@${acme_device_ip} "ls" "uname -n" "whoami"
+python expect_exec_cmd.py ssh ${acme_device_user}@${acme_device_ip} "ls"
+python expect_exec_cmd.py ssh ${acme_device_user}@${acme_device_addr} "ls"
+python expect_exec_cmd.py ssh ${acme_device_user}@${acme_device_addr}.local "ls"
 EOF
 
                                 expect_exec_cmd "ssh" "${device_user}@${device_ip}" commands.cmd
                                 rc=$?
 
                                 if [ $? != 0 ]; then 
-                                    echo_error "  => Fail"
+                                    echo_error "Fail to check ssh cnx from ${device_name} to acme"
                                 else                 
-                                    echo_log "  => Done"
+                                    echo_log "    Done copy ${device_name} public key to ${acme_device_addr}"
+                                    echo_log ""
                                 fi
                             fi
                         fi
