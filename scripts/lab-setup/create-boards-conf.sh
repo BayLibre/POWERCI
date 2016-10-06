@@ -106,6 +106,67 @@ expect_exec_cmd()
 
 }
 
+expect_exec_reboot()
+{
+    echo_debug "expect_exec_reboot START"
+    local debug=`if [ "$DEBUG_EN" == "yes" ]; then echo "-v"; else echo ""; fi`
+    local log="-l $LOGFILE --keeplog"
+    local cnx_type="$1"
+    local dest_addr="$2"
+
+    tmp_res="reboot.res"
+    echo_debug "python expect_exec_cmd.py --reboot $debug $log ${cnx_type} ${dest_addr} \"\" > ${tmp_res} 2>&1"
+    python expect_exec_cmd.py --reboot $debug $log ${cnx_type} ${dest_addr} "" > ${tmp_res} 2>&1
+    rc=$?
+
+    echo_debug " => rc = $rc"
+    echo_debug " => result:"
+    echo_debug "`cat ${tmp_res}`"
+    if [ $rc -ne 0 ]; then
+        echo "### WARNING ### reboot fails" >> ${tmp_res}
+        #echo_warning "`cat ${tmp_res}`"
+        ret_code=1
+    else
+        ret_code=0
+    fi
+    if [ "`cat ${tmp_res} | grep '### ERROR ###'`" != "" ]; then
+        #echo_error "`cat ${tmp_res}`"
+        ret_code=1
+    fi
+
+    echo_debug "expect_exec_reboot END"
+    return $ret_code
+
+}
+
+###################################################################################
+wait_board_restart()
+{
+    local board_ip=$1
+
+    ret_code=0
+    i=0
+    restarted="no"
+    sleep 5
+    while [ $i -lt 60 ]; do
+        sleep 1
+        echo_log -o "-ne" "."
+        #ping -c1 ${!board_ip_name} | grep "64 bytes from $board_ip_name"
+        if [ "`ping -c1 ${board_ip} | grep \"64 bytes from ${board_ip}\"`" != "" ]; then
+            echo_debug "    => restarted after $((i+5)) sec"
+            restarted="yes"
+            break
+        fi 
+        i=$(($i + 1))
+    done
+    if [ "${restarted}" == "no" ]; then
+        echo_error "$device_name not restarted after 65sec"
+        ret_code=1
+    fi
+
+    return $ret_code
+}
+
 ###################################################################################
 ## check if environment variable upper(<device_name>)_ADDR exist or not
 #  Purpose a default upper(<device_name>)_ADDR to user that shall validate or enter a new one
@@ -182,6 +243,19 @@ EOF
                     echo_warning "### WARNING ### ${board} address is not changed !"
                 fi
 
+#cat << EOF > commands.cmd
+#reboot
+#EOF
+                echo_debug "expect_exec_reboot \"conmux-console\" \"${board}\""
+                expect_exec_reboot "conmux-console" "${board}"
+                #i=0
+                #while [ $i -lt 30 ]; do
+                #    sleep 1
+                #    echo_log -o "-ne" "."
+                #    i=$(($i + 1))
+                #done
+                
+
             fi
 
         else
@@ -232,10 +306,43 @@ board_list()
         fi
     done
 
+    #list of acme port available
+    acme_possible_port="None"
+cat << EOF > commands.cmd
+dut-dump-probe 0
+dut-dump-probe 1
+dut-dump-probe 2
+dut-dump-probe 3
+dut-dump-probe 4
+dut-dump-probe 5
+dut-dump-probe 6
+dut-dump-probe 7
+EOF
+    expect_exec_cmd "conmux-console" "acme" "commands.cmd"
+    rc=$?
+
+    if [ $rc -eq 0 ]; then
+        acme_possible_port=""
+        for p in 0 1 2 3 4 5 6 7; do
+            avail=`cat commands.res | grep -A1 "dut-dump-probe $p" | grep "response:" | cut -d\: -f2`
+            if [ "`echo $avail | grep \"Could not open\"`" == "" ]; then
+                acme_possible_port="${acme_possible_port} Probe_$((p+1))"
+            fi
+        done
+        acme_possible_port=`echo ${acme_possible_port}| sed -e 's/^[ \t]*//' -e 's/*[ \t]$//'`
+    fi
+
+
     echo "NAME TYPE TTY ACME_PORT BAUD_RATE ADDR IP" > /tmp/lava_board
     echo_debug "DEVICE_LIST:\n ${DEVICE_LIST}"
     for d in ${DEVICE_LIST}; do
         device_name=`echo $d | awk -F: '{ print $1 }'`
+
+        board_addr ${device_name}
+
+        board_addr_name="`echo ${board//-/_} | sed 's/./\U&/g'`_ADDR"
+        board_ip_name="`echo ${board//-/_} | sed 's/./\U&/g'`_IP"
+
         echo_debug "define device type for $device_name"
         if [ "$device_name" == "acme" ]; then
             echo_debug " => Ignore acme"
@@ -249,16 +356,28 @@ board_list()
         echo_debug "get_answer \"$buffer\""
         get_answer "${buffer}"
         echo_debug "choice is: ${GET_ANSWER_RESULT}"    
-
+        device_type=${GET_ANSWER_RESULT}
         while true; do
-            echo_question "Enter ACME port connected to this device (From 1 to 8): "
-            read acme_port
-            if [ $acme_port -ge 1 ] && [ $acme_port -le 8 ]; then break; 
-            else echo " => Incorrect value"
+            if [ "$acme_possible_port" != "None" ]; then
+                echo_question "Enter ACME port connected to this device: "
+                GET_ANSWER_RESULT=""
+                echo_debug "get_answer \"${acme_possible_port// /,}\""
+                get_answer "${acme_possible_port// /,}"
+                echo_debug "choice is: ${GET_ANSWER_RESULT}"
+                acme_port=${GET_ANSWER_RESULT//Probe\_/}
+                break
+            else
+                echo_warning "Unable to poll acme_port available"
+
+                echo_question "Enter ACME port connected to this device (From 1 to 8): "
+                read acme_port
+                if [ $acme_port -ge 1 ] && [ $acme_port -le 8 ]; then break; 
+                else echo " => Incorrect value"
+                fi
             fi
         done
- 
-        echo_log "ReStart $d"
+        echo_debug "acme_port=${acme_port}"
+        echo_log "ReStart $device_name"
 cat << EOF > commands.cmd
 dut-hard-reset ${acme_port}
 EOF
@@ -266,17 +385,11 @@ EOF
         rc=$?
 
         if [ $rc -eq 0 ]; then
-            i=0
-            while [ $i -lt 30 ]; do
-                sleep 1
-                echo_log -o "-ne" "."
-                i=$(($i + 1))
-            done
-            board_addr ${device_name}
+            sleep 5
+            wait_board_restart ${!board_ip_name}
 
-            board_addr_name="`echo ${board//-/_} | sed 's/./\U&/g'`_ADDR"
-            board_ip_name="`echo ${board//-/_} | sed 's/./\U&/g'`_IP"
-            newd="$d:${GET_ANSWER_RESULT}:${acme_port}:${!board_addr_name}:${!board_ip_name}"
+            newd="$d:${device_type}:${acme_port}:${!board_addr_name}:${!board_ip_name}"
+            echo_debug "echo \"$newd\" | awk -F: '{ print $1 \" \" $5 \" \" $2 \" \" $6 \" \" $4 \" \" $7 \" \" $8 }' >> /tmp/lava_board"
             echo "$newd" | awk -F: '{ print $1 " " $5 " " $2 " " $6 " " $4 " " $7 " " $8 }' >> /tmp/lava_board
 
             DEVICE_LIST=${DEVICE_LIST//$d/$newd}
@@ -317,20 +430,20 @@ EOF
 ###################################################################################
 ## create ssh system between lab, acme and dut
 ###################################################################################
-copy_sshkey()
+copy_check_sshkey()
 {
-    echo_debug "copy_sshkey START"
-    local keyfile=`echo ~/.ssh/id_rsa`
+    echo_debug "copy_check_sshkey START"
+    local src_file=".ssh/id_rsa.pub"
 
-    local opt=`getopt -o k: --long key: -- "$@"`
+    local opt=`getopt -o s: --long src: -- "$@"`
     if [ $? != 0 ] ; then echo "Terminating..." >&2 ; exit 1 ; fi
 
     eval set -- "$opt"
 
     while true ; do
         case "$1" in
-            -k|--key) 
-                keyfile="$2"; shift 2;;
+            -s|--src) 
+                source="$2"; shift 2;;
             --) shift ; break ;;
             *) echo "Internal error!" ; exit 1 ;;
         esac
@@ -338,111 +451,324 @@ copy_sshkey()
 
     local destination=$1
 
-    if [ -n "`echo $destination | grep ':'`" ]; then
-        dest_conmux=`echo $destination | cut -d: -f1`
-        dest_user=`echo $destination | cut -d: -f2 | cut -d@ -f1`
-        dest_addr=`echo $destination | cut -d: -f2 | cut -d@ -f2`
-        dest_ip=`echo $destination | cut -d: -f2 | cut -d@ -f3`
+    if [ "`echo $source | cut -d\: -f1 | cut -d\@ -f1`" == "" ]; then src_device="local"
+    else src_device=`echo $source | cut -d\: -f1 | cut -d\@ -f1`
+    fi
+    src_user=`echo $source | cut -d\: -f1 | cut -d\@ -f2`
+    src_addr=`echo $source | cut -d\: -f1 | cut -d\@ -f3`
+    src_ip=`echo $source | cut -d\: -f1 | cut -d\@ -f4`
+    if [ -n "`echo $source | grep ':'`" ]; then src_file=`echo $source | cut -d\: -f2`
+    fi
+
+    dst_device=`echo "$destination" | cut -d\: -f1 | cut -d\@ -f1`
+    dst_user=`echo "$destination" | cut -d\: -f1 | cut -d\@ -f2`
+    dst_addr=`echo "$destination" | cut -d\: -f1 | cut -d\@ -f3`
+    dst_ip=`echo "$destination" | cut -d\: -f1 | cut -d\@ -f4`
+    if [ -n "`echo "$destination" | grep ':'`" ]; then dst_file=`echo $destination | cut -d\: -f2`
+    else dst_destination=""
+    fi
+    
+    echo_debug ""
+    echo_debug "    source  = ${source}"
+    echo_debug "    src_device  = ${src_device}"
+    echo_debug "    src_user    = ${src_user}"
+    echo_debug "    src_addr    = ${src_addr}"
+    echo_debug "    src_ip      = ${src_ip}"
+    echo_debug "    src_file    = ${src_file}"
+    echo_debug ""
+    echo_debug "    destination = ${destination}"
+    echo_debug "    dest_device = ${dst_device}"
+    echo_debug "    dest_user   = ${dst_user}"
+    echo_debug "    dest_addr   = ${dst_addr}"
+    echo_debug "    dest_ip     = ${dst_ip}"
+    echo_debug "    dest_file   = ${dst_file}"
+    echo_debug ""
+
+    if [ "${src_device}" == "local" ]; then
+        #check if source key exist
+        #if source key is ~/.ssh/id_rsa.pub and do not exist, create it
+        if [ "${src_device}" == "local" ] && [[ ${src_file} =~ ".ssh/id_rsa.pub" ]] && [ ! -f "${src_file}" ]; then
+            echo_log "    => Create {src_device} rsa key"
+            ssh-keygen -N "" -f "`echo ${src_file} | awk -F'.pub' '{ print $1 }'`"
+        fi
+
     else
-        dest_conmux=""
-        dest_user=`echo $destination | cut -d@ -f1`
-        dest_addr=`echo $destination | cut -d@ -f2`
-        dest_ip=`echo $destination | cut -d@ -f3`
-    fi
-
-    #check if key exist for lab, create it if not
-    if [ ! -f "$keyfile.pub" ]; then
-        echo_log "    => Create `uname -n` rsa key"
-        ssh-keygen -N "" -f $keyfile
-    fi
-
-    public_key=`cat $keyfile.pub`
-
-    #check ssh connection
-    echo_log "    => Check if ${dest_addr} is pingable"
-    dest_addr_ext=""
-    ping ${dest_addr} -c 1 > /dev/null 2>&1
-    if [ $? -ne 0 ]; then
-        ping ${dest_addr}.local -c 1 > /dev/null 2>&1
+        #check src ssh connection
+        echo_log "    => Check if ${src_addr} is pingable"
+        src_addr_ext=""
+        ping ${src_addr} -c 1 > /dev/null 2>&1
         if [ $? -ne 0 ]; then
-            ping ${dest_ip} -c 1 > /dev/null 2>&1
+            ping ${src_addr}.local -c 1 > /dev/null 2>&1
             if [ $? -ne 0 ]; then
-                #nothing is pingable, use conmux
-                cnx_type="conmux-console"
-                if [ -z "$dest_conmux" ]; then
-                    echo_error "ssh connection does not work for ${dest_addr}"
+                ping ${src_ip} -c 1 > /dev/null 2>&1
+                if [ $? -ne 0 ]; then
+                    #nothing is pingable, use conmux
+                    src_cnx_type="conmux-console"
+                    if [ -z "$src_device" ]; then
+                        echo_error "ssh connection does not work for ${src_addr}"
+                        echo_error "conmux device name is mandatory"
+                        usage
+                        echo_debug "copy_check_sshkey END"
+                        exit 1
+                    else
+                        src_dest="${src_device}"
+                    fi
+                else
+                    #only ip is pingable (addr issue) use ssh with ip
+                    src_cnx_type="ssh"
+                    src_cnx_dest="${src_user}@${src_ip}"
+                fi
+            else
+                #addr.local is pingable, use ssh with addr.local
+                src_addr_ext=".local"
+                src_cnx_type="ssh"
+                src_cnx_dest="${src_user}@${src_addr}${src_addr_ext}"
+            fi
+        else
+            src_cnx_type="ssh"
+            src_cnx_dest="${src_user}@${src_addr}"     
+        fi
+
+        #check src SSH connexion
+        if [ "${src_cnx_type}" == "ssh" ]; then
+            echo_log "    => Check ssh connection from `uname -n` to ${src_ip} already exist"
+            check_ssh_cnx "${src_cnx_dest}"
+        
+            if [ $rc -ne 0 ]; then
+                src_cnx_type="conmux-console"
+                if [ -z "$src_device" ]; then
+                    echo_error "ssh connection does not work for ${src_addr}"
                     echo_error "conmux device name is mandatory"
                     usage
+                    echo_debug "copy_check_sshkey END"
                     exit 1
                 else
-                    cnx_dest="${dest_conmux}"
+                    src_cnx_dest="${src_device}"
+                fi
+            fi
+        fi
+
+        #check or create src public key
+cat << EOF > commands.cmd
+if [ ! -f ".ssh/id_rsa.pub" ]; then ssh-keygen -N "" -f ".ssh/id_rsa"; fi
+EOF
+        if [ "${src_cnx_type}" == "ssh" ]; then
+            expect_exec_cmd "ssh" "${src_user}@${src_ip}" commands.cmd
+            rc=$?
+        else
+            expect_exec_cmd "conmux-console" "${src_device}" commands.cmd
+        fi
+
+    fi
+
+    #check dest ssh connection
+    echo_log "    => Check if ${dst_addr} is pingable"
+    dst_addr_ext=""
+    ping ${dst_addr} -c 1 > /dev/null 2>&1
+    if [ $? -ne 0 ]; then
+        ping ${dst_addr}.local -c 1 > /dev/null 2>&1
+        if [ $? -ne 0 ]; then
+            ping ${dst_ip} -c 1 > /dev/null 2>&1
+            if [ $? -ne 0 ]; then
+                #nothing is pingable, use conmux
+                dst_cnx_type="conmux-console"
+                if [ -z "$dst_device" ]; then
+                    echo_error "ssh connection does not work for ${dst_addr}"
+                    echo_error "conmux device name is mandatory"
+                    usage
+                    echo_debug "copy_check_sshkey END"
+                    exit 1
+                else
+                    dst_cnx_dest="${dst_device}"
                 fi
             else
                 #only ip is pingable (addr issue) use ssh with ip
-                cnx_type="ssh"
-                cnx_dest="${dest_user}@${dest_ip}"
+                dst_cnx_type="ssh"
+                dst_cnx_dest="${dst_user}@${dst_ip}"
             fi
         else
             #addr.local is pingable, use ssh with addr.local
-            dest_addr_ext=".local"
-            cnx_type="ssh"
-            cnx_dest="${dest_user}@${dest_addr}${dest_addr_ext}"
+            dst_addr_ext=".local"
+            dst_cnx_type="ssh"
+            dst_cnx_dest="${dst_user}@${dst_addr}${dst_addr_ext}"
         fi
     else
-        cnx_type="ssh"
-        cnx_dest="${dest_user}@${dest_addr}"     
+        dst_cnx_type="ssh"
+        dst_cnx_dest="${dst_user}@${dst_addr}"     
     fi
 
-    if [ "${cnx_type}" == "ssh" ]; then
-        echo_log "    => Check ssh connection from `uname -n` to ${dest_ip} already exist"
-        check_ssh_cnx "${cnx_dest}"
+    #check SSH connexion
+    if [ "${dst_cnx_type}" == "ssh" ]; then
+        echo_log "    => Check ssh connection from `uname -n` to ${dst_ip} already exist"
+        check_ssh_cnx "${dst_cnx_dest}"
         
-        if [ $? -ne 0 ]; then
-            cnx_type="conmux-console"
-            if [ -z "$dest_conmux" ]; then
-                echo_error "ssh connection does not work for ${dest_addr}"
+        if [ $rc -ne 0 ]; then
+            dst_cnx_type="conmux-console"
+            if [ -z "$dst_device" ]; then
+                echo_error "ssh connection does not work for ${dst_addr}"
                 echo_error "conmux device name is mandatory"
                 usage
+                echo_debug "copy_check_sshkey END"
                 exit 1
             else
-                cnx_dest="${dest_conmux}"
+                dst_cnx_dest="${dst_device}"
             fi
         fi
     fi
 
-    #give authorized key via conmux
-    ret_code=0
-    echo_log "    => Copy $keyfile.pub key via '${cnx_type}' to '${cnx_dest}'"
-
-    key_user_addr=`awk '{ print $NF }' $keyfile.pub`
-
-cat << EOF > commands.cmd
-echo '${public_key}' > tmp.tmp
-if [ -f ".ssh/authorized_keys" ];then sed '/${key_user_addr}/d' .ssh/authorized_keys > .ssh/authorized_keys.1; mv .ssh/authorized_keys.1 .ssh/authorized_keys; fi
-cat tmp.tmp >> .ssh/authorized_keys; fi
+    #if src is not local, src_cnx_type AND dst_cnx_type is ssh, use scp src:file dst:file
+    #else use conmux and copy via local host
+    if [ "${src_device}" != "local" ]; then
+        if [ "${src_cnx_type}" == "ssh" ] && [ "${dst_cnx_type}" == "ssh" ]; then
+            echo_log "    => Copy $src_file key via '${src_cnx_type}' to '${dst_cnx_dest}'"
+            echo_debug "scp ${src_cnx_dest}:${src_file} ${dst_cnx_dest}:.ssh/${src_cnx_dest}_id_rsa.pub"
+            scp ${src_cnx_dest}:${src_file} ${dst_cnx_dest}:.ssh/${src_cnx_dest}_id_rsa.pub
+            rc=$?
+        elif [ "${src_cnx_type}" != "ssh" ]; then
+            echo_log "    => Copy $src_file key via '${src_cnx_type}' to local"
+            cat << EOF > commands.cmd
+echo '${src_file}'
 EOF
+            expect_exec_cmd "${src_cnx_type}" "${src_cnx_dest}" commands.cmd
+            rc=$?
+            if [ $rc -ne 0 ]; then
+                echo_error "### ERROR ### Fail to copy public key from ${src_device} to `uname -n`"
+                echo_debug "copy_check_sshkey END"
+                return 1
+            fi
 
-    expect_exec_cmd "${cnx_type}" "${cnx_dest}" commands.cmd
+            public_key=`cat $commands.res | grep response | awk '{ print $2 }'`
+            key_user_addr=`echo ${public_key} | awk '{ print $NF }'`
+            echo ${public_key} > ${key_user_addr}_id_rsa.pub
+            src_file=${key_user_addr}_id_rsa.pub
+
+            if  [ "${dst_cnx_type}" == "ssh" ]; then
+                echo_log "    => Copy local $src_file key via '${dst_cnx_type}' to ${dst_cnx_dest}"
+                echo_debug "scp $src_file ${dst_cnx_dest}:.ssh/${key_user_addr}_id_rsa.pub"
+                scp $src_file ${dst_cnx_dest}:.ssh/${key_user_addr}_id_rsa.pub
+                rc=$?
+            else
+                echo_log "    => Copy local $src_file key via '${dst_cnx_type}' to ${dst_cnx_dest}"
+                cat << EOF > commands.cmd
+echo '${public_key}' > .ssh/$src_file
+EOF
+                expect_exec_cmd "${dst_cnx_type}" "${dst_cnx_dest}" commands.cmd
+                rc=$?
+
+            fi            
+        
+        fi
+    else
+        public_key=`cat $src_file`
+        key_user_addr=`awk '{ print $NF }' $src_file`
+
+        if [ "${dst_cnx_type}" == "ssh" ]; then
+            echo_log "    => Copy local ${src_file} key via '${dst_cnx_type}' to ${dst_cnx_dest}"
+            echo_debug "scp $src_file ${dst_cnx_dest}:.ssh/${key_user_addr}_id_rsa.pub"
+            scp $src_file ${dst_cnx_dest}:.ssh/${key_user_addr}_id_rsa.pub
+            rc=$?
+        else
+            echo_log "    => Copy local ${src_file} key via '${dst_cnx_type}' to ${dst_cnx_dest}"
+            cat << EOF > commands.cmd
+echo '${public_key}' > .ssh/${key_user_addr}_id_rsa.pub
+EOF
+            expect_exec_cmd "${dst_cnx_type}" "${dst_cnx_dest}" commands.cmd
+            rc=$?
+        fi        
+    fi
+
+    #give authorized key via conmux
+    #ret_code=0
+    #echo_log "    => Copy $src_file key via '${cnx_type}' to '${cnx_dest}'"
+
+    #public_key=`cat $src_file`
+    #key_user_addr=`awk '{ print $NF }' $src_file`
+
+    #if [ "${cnx_type}" == "ssh" ]; then
+    #    echo_debug "scp $src_file.pub ${cnx_dest}:.ssh/${key_user_addr}_id_rsa.pub"
+    #    scp $src_file ${cnx_dest}:.ssh/${key_user_addr}_id_rsa.pub
+    #    rc=$?
+    #else
+
+#cat << EOF > commands.cmd
+#echo '${public_key}' > .ssh/${key_user_addr}_id_rsa.pub
+#EOF
+    #    expect_exec_cmd "${cnx_type}" "${cnx_dest}" commands.cmd
+    #    rc=$?
+    #fi
+    if [ $rc -ne 0 ]; then
+        echo_error "### ERROR ### Fail to copy public key to ${device_name}"
+        echo_debug "copy_check_sshkey END"
+        return 1
+    fi
+
+    cat << EOF > commands.cmd
+if [ -f ".ssh/authorized_keys" ];then sed '/${key_user_addr}/d' .ssh/authorized_keys > .ssh/authorized_keys.1; mv .ssh/authorized_keys.1 .ssh/authorized_keys; fi
+cat .ssh/${key_user_addr}_id_rsa.pub >> .ssh/authorized_keys
+rm -f .ssh/${key_user_addr}_id_rsa.pub
+EOF
+    expect_exec_cmd "${dst_cnx_type}" "${dst_cnx_dest}" commands.cmd
     rc=$?
 
     if [ $rc -ne 0 ]; then
-        echo_error "### ERROR ### Fail to copy public key to ${device_name}"
-        ret_code=1
-    else
-        echo_log "    => Check ssh connection from `uname -n` to ${dest_addr} after key copy"
-        check_ssh_cnx "${dest_user}@${dest_ip}"
-        rc1=$?
-        check_ssh_cnx "${dest_user}@${dest_addr}${dest_addr_ext}"
-        rc2=$?
-
-        if [ $rc1 -ne 0 ] && [ $rc2 -ne 0 ]; then 
-            echo_error "### ERROR ### ssh connection does not work for ${dest_addr}"
-            ret_code=1
-        fi
+        echo_error "### ERROR ### Fail to authorize public key to ${device_name}"
+        echo_debug "copy_check_sshkey END"
+        return 1
     fi
 
-    echo_debug "copy_sshkey END"
-    echo_debug "copy_sshkey ret_code=${ret_code}"
+
+    #reboot board
+#    cat << EOF > commands.cmd
+#reboot
+#EOF
+    echo_debug "copy_check_sshkey - expect_exec_reboot \"${dst_cnx_type}\" \"${dst_cnx_dest}\""
+    expect_exec_reboot "${dst_cnx_type}" "${dst_cnx_dest}"
+    #wait_board_restart ${dst_ip}
+
+
+    #retest ping
+    dst_addr_ext=""
+    ping ${dst_addr} -c 1 > /dev/null 2>&1
+    if [ $? -ne 0 ]; then
+        ping ${dst_addr}.local -c 1 > /dev/null 2>&1
+        if [ $? -ne 0 ]; then
+            ping ${dst_ip} -c 1 > /dev/null 2>&1
+            if [ $? -ne 0 ]; then
+                echo_error "### ERROR ### ${dst_addr} still not pingable"
+                echo_debug "copy_check_sshkey END"
+                return 1
+            else
+                #only ip is pingable (addr issue) use ssh with ip
+                cnx_dest="${dst_user}@${dst_ip}"
+            fi
+        else
+            #addr.local is pingable, use ssh with addr.local
+            dst_addr_ext=".local"
+            cnx_dest="${dst_user}@${dst_addr}${dst_addr_ext}"
+        fi
+    else
+        cnx_dest="${dst_user}@${dst_addr}"     
+    fi
+
+    #recheck SSH cnx
+    if [ "${cnx_dest}" != "" ]; then 
+        echo_log "    => Check ssh connection from `uname -n` to ${dst_addr} after key copy"
+        check_ssh_cnx "${cnx_dest}"
+        rc=$?
+
+        if [ $rc -ne 0 ]; then 
+            echo_error "### ERROR ### ssh connection does not work for ${dst_addr}"
+            echo_debug "copy_check_sshkey END"
+            return 1
+        fi
+    else
+        echo_debug "copy_check_sshkey END"
+        return 1
+    fi
+
+
+    echo_debug "copy_check_sshkey END"
+    echo_debug "copy_check_sshkey ret_code=${ret_code}"
     return ${ret_code}
 
 }
@@ -462,91 +788,110 @@ create_ssh()
 
     lab_key=`cat ~/.ssh/id_rsa.pub`
     #check if lab key is in authorized key of each device, add it if not
+
+    for d in ${DEVICE_LIST}; do
+        if [ "`echo $d | awk -F\: '{ print $1 }'`" == "acme" ]; then
+            acme_device_user=`echo $d | awk -F: '{ print $7 }' | awk -F'@' '{ print $1}'`
+            acme_device_addr=`echo $d | awk -F: '{ print $7 }' | awk -F'@' '{ print $2}'`
+            acme_device_ip=`echo $d | awk -F: '{ print $8 }'`
+        fi
+    done
+
     for d in ${DEVICE_LIST}; do
         device_name=`echo $d | awk -F: '{ print $1 }'`
         device_user=`echo $d | awk -F: '{ print $7 }' | awk -F'@' '{ print $1}'`
         device_addr=`echo $d | awk -F: '{ print $7 }' | awk -F'@' '{ print $2}'`
         device_ip=`echo $d | awk -F: '{ print $8 }'`
 
-        if [ ${device_name}"" == "acme" ]; then
-            acme_device_user=${device_user}
-            acme_device_addr=${device_addr}
-            acme_device_ip=${device_ip}
-        fi
+        echo_debug "    d = $d"
+        echo_debug "    device_name = $device_name"
+        echo_debug "    device_user = $device_user"
+        echo_debug "    device_addr = $device_addr"
+        echo_debug "    device_ip   = $device_ip"
 
-        #copy lab key to remote
+        #copy lab key to each remote (acme and dut)
         #Note: ssh-copy-id does not work, so need to recreate a script to do it
         echo_log "    Copy `uname -n` public key to ${device_addr}"
-        copy_sshkey ${device_name}:${device_user}@${device_addr}@${device_ip}
+        echo_debug "copy_check_sshkey \"${device_name}@${device_user}@${device_addr}@${device_ip}\""
+        copy_check_sshkey "${device_name}@${device_user}@${device_addr}@${device_ip}"
         if [ $? -eq 0 ]; then echo_log "    Done copy `uname -n` public key to ${device_addr}"; fi
 
-        #copy dut key to acme
+        #copy each dut key to acme
         if [ "${device_name}" != "acme" ]; then
             echo_log "    Copy ${device_name} public key to acme"
 
-            echo_log "    => Check and Create pub key of ${device_name}"
+            #echo_log "    => Check and Create pub key of ${device_name}"
 
-cat << EOF > commands.cmd
-if [ ! -f ".ssh/id_rsa.pub" ]; then ssh-keygen -N "" -f ".ssh/id_rsa"; fi
-EOF
+#cat << EOF > commands.cmd
+#if [ ! -f ".ssh/id_rsa.pub" ]; then ssh-keygen -N "" -f ".ssh/id_rsa"; fi
+#EOF
 
-            expect_exec_cmd "ssh" "${device_user}@${device_ip}" commands.cmd
-            rc=$?
+            #expect_exec_cmd "ssh" "${device_user}@${device_ip}" commands.cmd
+            #rc=$?
 
-            if [ $rc -ne 0 ]; then 
-                echo_error "Public key for ${device_name} does not exist and creation fails"
-            else
-                echo_log "    => Get pub key from ${device_name}"
-                echo_debug "scp ${device_user}@${device_ip}:~/.ssh/id_rsa.pub ${device_name}_id_rsa.pub"
-                scp ${device_user}@${device_ip}:~/.ssh/id_rsa.pub ${device_name}_id_rsa.pub
-                if [ $? != 0 ]; then 
-                    echo_error "Fail to copy public key of ${device_name} to acme"
-                else
-                    echo_log "    => Copy pub key onto acme"
-                    copy_sshkey -k ${device_name}_id_rsa acme:${acme_device_user}@${acme_device_addr}@${acme_device_ip}
-                    if [ $? -ne 0 ]; then
-                        echo_error "Fail to copy public key of ${device_name} to acme"
-                    else
-                        echo_debug "    => Copy script expect_exec_cmd.py to ${device_name} "
-                        echo_debug "scp expect_exec_cmd.py ${device_user}@${device_ip}:expect_exec_cmd.py"
-                        scp expect_exec_cmd.py ${device_user}@${device_ip}:expect_exec_cmd.py
-                        if [ $? -ne 0 ]; then 
-                            echo_error "Fail to check ssh cnx from ${device_name} to acme"
+            #if [ $rc -ne 0 ]; then 
+            #    echo_error "Public key for ${device_name} does not exist and creation fails"
+            #else
+                echo_debug "copy_check_sshkey -s \"${device_name}@${device_user}@${device_addr}@${device_ip}\" \"acme@${acme_device_user}@${acme_device_addr}@${acme_device_ip}:.ssh/${device_name}_id_rsa.pub\""
+                copy_check_sshkey -s "${device_name}@${device_user}@${device_addr}@${device_ip}" "acme@${acme_device_user}@${acme_device_addr}@${acme_device_ip}:.ssh/${device_name}_id_rsa.pub"
+                if [ $? -eq 0 ]; then echo_log "    Done copy `uname -n` public key to ${device_addr}"; fi
+                
 
-                        else 
-                            echo_debug "    => Install python and pexpect on ${device_name}"
-cat << EOF > commands.cmd
-sudo apt-get install python
-sudo apt-get install python-pexpect
-EOF
 
-                            expect_exec_cmd "ssh" "${device_user}@${device_ip}" commands.cmd
-                            rc=$?
-                            if [ $? != 0 ]; then 
-                                echo_error "Fail to check ssh cnx from ${device_name} to acme"
-                            else                 
-                                echo_log "    => Check ssh connection from ${device_name} to acme"
 
-cat << EOF > commands.cmd
-python expect_exec_cmd.py ssh ${acme_device_user}@${acme_device_ip} "ls"
-python expect_exec_cmd.py ssh ${acme_device_user}@${acme_device_addr} "ls"
-python expect_exec_cmd.py ssh ${acme_device_user}@${acme_device_addr}.local "ls"
-EOF
+                #echo_log "    => Get pub key from ${device_name}"
+                #echo_debug "scp ${device_user}@${device_ip}:~/.ssh/id_rsa.pub ${device_name}_id_rsa.pub"
 
-                                expect_exec_cmd "ssh" "${device_user}@${device_ip}" commands.cmd
-                                rc=$?
+                #scp ${device_user}@${device_ip}:~/.ssh/id_rsa.pub ${device_name}_id_rsa.pub
+                #if [ $? != 0 ]; then 
+                #    echo_error "Fail to copy public key of ${device_name} to acme"
+                #else
+                #    echo_log "    => Copy key ${device_name}_id_rsa.pub onto acme"
+                #    copy_debug "copy_check_sshkey -s \":${device_name}_id_rsa.pub\" \"acme@${acme_device_user}@${acme_device_addr}@${acme_device_ip}:.ssh/${device_name}_id_rsa.pub\""
+                #    copy_check_sshkey -s ":${device_name}_id_rsa.pub" "acme@${acme_device_user}@${acme_device_addr}@${acme_device_ip}:.ssh/${device_name}_id_rsa.pub"
+                #    if [ $? -ne 0 ]; then
+                #        echo_error "Fail to copy public key of ${device_name} to acme"
+                #    else
+                #        echo_debug "    => Copy script expect_exec_cmd.py to ${device_name} "
+                #        echo_debug "scp expect_exec_cmd.py ${device_user}@${device_ip}:expect_exec_cmd.py"
+                #        scp expect_exec_cmd.py ${device_user}@${device_ip}:expect_exec_cmd.py
+                #        if [ $? -ne 0 ]; then 
+                #            echo_error "Fail to check ssh cnx from ${device_name} to acme"
 
-                                if [ $? != 0 ]; then 
-                                    echo_error "Fail to check ssh cnx from ${device_name} to acme"
-                                else                 
-                                    echo_log "    Done copy ${device_name} public key to ${acme_device_addr}"
-                                    echo_log ""
-                                fi
-                            fi
-                        fi
-                    fi
-                fi
-            fi        
+                #        else 
+                #            echo_debug "    => Install python and pexpect on ${device_name}"
+#cat << EOF > commands.cmd
+#sudo apt-get install python
+#sudo apt-get install python-pexpect
+#EOF
+
+                #            expect_exec_cmd "ssh" "${device_user}@${device_ip}" commands.cmd
+                #            rc=$?
+                #            if [ $? != 0 ]; then 
+                #                echo_error "Fail to check ssh cnx from ${device_name} to acme"
+                #            else                 
+                #                echo_log "    => Check ssh connection from ${device_name} to acme"
+
+#cat << EOF > commands.cmd
+#python expect_exec_cmd.py ssh ${acme_device_user}@${acme_device_ip} "ls"
+#python expect_exec_cmd.py ssh ${acme_device_user}@${acme_device_addr} "ls"
+#python expect_exec_cmd.py ssh ${acme_device_user}@${acme_device_addr}.local "ls"
+#EOF
+
+                #                expect_exec_cmd "ssh" "${device_user}@${device_ip}" commands.cmd
+                #                rc=$?
+
+                #                if [ $? != 0 ]; then 
+                #                    echo_error "Fail to check ssh cnx from ${device_name} to acme"
+                #                else                 
+                #                    echo_log "    Done copy ${device_name} public key to ${acme_device_addr}"
+                #                    echo_log ""
+                #                fi
+                #            fi
+                #        fi
+                #    fi
+                #fi
+            #fi        
         fi
             
     done
@@ -719,7 +1064,7 @@ create_board_conf()
     #check or define define acme_addr
     echo_debug "CALL acme_addr"
     #acme_addr
-    board_addr "acme" 
+    #board_addr "acme" 
     #check or define boardlist
     echo_debug "CALL board_list"
     board_list

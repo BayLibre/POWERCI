@@ -34,20 +34,39 @@ def create_commands_list(commands):
     logging.debug("get_commands: return "+str(A_cmds))
     return A_cmds
 
+class expectError(Exception):
+    TIMEOUT = "Connection Timeout"
+    REJECT  = "Connection Rejected"
+    LOGIN   = "Login incorrect"
+    REBOOT  = "%s Not restarted after %d sec"
+    UNKNOWN_NAME = "Name or service not known: %s"
+    PERMISSION_DENIED = "Permission denied, check if password is correct"
+    HOST_KEY = "Host key verification failed"
+
+    def _get_message(self): return self._message
+    def _set_message(self,message): self._message=message
+    message = property(_get_message,_set_message)
+
 class expect_generic:
     def __init__(self,tool,toaccess,logfile):
         self.logger=logging.FileHandler(logfile)
         self.logger.write = _write
         self.logger.flush = _doNothing
-        
-        logging.info('Connect to '+toaccess)
-        self.p = pexpect.spawn("%s %s" % (tool,toaccess),logfile=self.logger)
-        time.sleep(4)
 
+        self.tool=tool
+        self.toaccess=toaccess
+
+        self.user=""
+        self.addr=""
+        self.ip=""
+        
+        logging.info("Spawn %s %s" % (tool,toaccess))
+        self.p = pexpect.spawn("%s %s" % (tool,toaccess),logfile=self.logger)
+        time.sleep(2)
 
     def expect(self,expected):
         logging.debug("expect: START")
-        time.sleep(1)
+        #time.sleep(1)
         expected.extend([pexpect.EOF,pexpect.TIMEOUT])
         logging.debug("expect: input expected = "+str(expected))
         i=self.p.expect(expected)
@@ -57,12 +76,14 @@ class expect_generic:
             logging.error("### ERROR ### Connection timeout")
             print "### ERROR ### Connection timeout"
             logging.debug("expect: exit 1")
-            sys.exit(1)
+            raise expectError(expectError.TIMEOUT)
+
         elif i==len(expected)-2:
             logging.error("### ERROR ### Connection rejected")
             print "### ERROR ### Connection rejected"
             logging.debug("expect: exit 1")
-            sys.exit(1)
+            raise expectError(expectError.REJECT)
+
         else:
             if self.p.buffer.strip() == '':
                 logging.debug("expect: return"+str(i))
@@ -92,7 +113,7 @@ class expect_generic:
             logging.debug("call expect")
             if len(self.prompt+' '+cmd)>79:
                 val=len(self.prompt+' '+cmd) // 80
-                cmd2=(self.prompt+' '+cmd)[val*80:]
+                cmd2=(self.prompt+' '+cmd)[val*80+1:]
                 i=self.expect([cmd2+self.newline+self.prompt,cmd2+self.newline+"(.*)"+self.newline+self.prompt])
             else:
                 i=self.expect([cmd+self.newline+self.prompt,cmd+self.newline+"(.*)"+self.newline+self.prompt])
@@ -118,20 +139,97 @@ class expect_generic:
     
         return A_cmds
 
+    def get_param(self):
+        A_cmds=self.exec_commands(["pwd","whoami","uname -n","ifconfig eth0 | grep 'inet addr' | sed 's/\s\+/ /g' | cut -d: -f2 | cut -d' ' -f1"])
+        
+        for cmd in A_cmds:
+            if "whoami" in cmd['command'] and cmd['rc']=='0':
+                self.user=cmd['response']
+            if "uname" in cmd['command'] and cmd['rc']=='0':
+                self.addr=cmd['response']
+            if "ifconfig" in cmd['command'] and cmd['rc']=='0':
+                self.ip=cmd['response']
+
+
+    def reboot(self,ip=""):
+        if ip=="": self.get_param()
+
+        #import ping, socket
+        logging.info('Reboot')
+        self.p.sendline('reboot')
+
+        time.sleep(10)
+
+        #polling if remote is restarted for 60sec
+        import subprocess
+        timeout=120
+        restarted=False
+        start=time.time()
+        while time.time()-start < timeout:
+            ping = subprocess.Popen(["ping", "-c", "1", self.ip], 
+                                    stdout = subprocess.PIPE,
+                                    stderr = subprocess.PIPE
+                                    )
+            out, error = ping.communicate()
+            if '1 packets transmitted, 1 received' in out:
+                logging.info("%s restarted after %d sec" % (self.toaccess,int(time.time()-start)))
+                print "%s restarted after %d sec" % (self.toaccess,int(time.time()-start))
+                restarted=True
+                break
+  
+            time.sleep(1)
+
+        if not  restarted:
+            logging.error("### ERROR ### %s Not restarted after %d sec" % (self.toaccess,timeout))
+            print "### ERROR ### %s Not restarted after %d sec" % (self.toaccess,timeout)
+            logging.debug("reboot: exit 1")
+            raise expectError(expectError.REBOOT % (self.toaccess, timeout))
+
+
+        time.sleep(5)
+        #check host is ready to accept commands
+        #ready=False
+        #start=time.time()
+        #while time.time()-start < 60:
+        #    try:
+        #        self.p.sendline("\r")
+        #        if self.expect(["login: "]) == 0:
+        #            logging.debug(" => login: received")
+        #            logging.info('Need login info')
+        #            ready=True
+        #            break
+        #    except expectError, err:
+        #        if expectError.TIMEOUT in str(err): pass
+        #        else: raise expectError(str(err))
+
+        #if not ready:
+        #    logging.error("### ERROR ### %s Not restarted after 60sec" % self.toaccess)
+        #    print "### ERROR ### %s Not restarted after 60sec" % self.toaccess
+        #    logging.debug("reboot: exit 1")
+        #    raise expectError(expectError.REBOOT % (self.toaccess, 60))
+            
+        
+        
+
 class expect_conmux(expect_generic):
-    def __init__(self,device,logfile):
-        self.device=device
+    def __init__(self,mandatory,logfile):
+        self.device=mandatory[0]
         expect_generic.__init__(self,'conmux-console',self.device,logfile)
+
+        self.user_passwd=mandatory[1].split(":")
+        self.login = self.user_passwd[0]
+        self.passwd= ""
+        if len(self.user_passwd)==2: 
+            self.passwd=self.user_passwd[1]
+
         self.newline='\r\r\n'
         self.prompt='#'
 
-    def connect(self,user_passwd="root"):
-        login=user_passwd.split(":")
-
+    def connect(self,args):
         self.expect(["Connected to %s console .*" % self.device])
         logging.info(' => Done')
         self.p.setwinsize(1000,1000)
-
+        
         logging.debug("Send \r, expect 'login:' or prompt")
         self.p.sendline("\r")
         if self.expect(["login: ",self.prompt]) == 0:
@@ -139,17 +237,15 @@ class expect_conmux(expect_generic):
             logging.info('Need login info')
 
             logging.debug("Send login, expect 'Password:' or prompt")
-            self.p.sendline(login[0])
+            self.p.sendline(self.login)
             if self.expect(["Password: ",self.prompt]) == 0:
                 logging.debug(" => 'Password:' received")
-                if len(login)==1: passwd=""
-                else:             passwd=login[1]
                 logging.debug("Send password, expect 'Login incorrect' or prompt")
-                self.p.sendline(passwd)
+                self.p.sendline(self.passwd)
                 if self.expect(["Login incorrect",self.prompt])==0:
                     logging.error("### ERROR ### Login incorrect")
                     print "### ERROR ### Login incorrect"
-                    sys.exit(1)
+                    raise expectError(expectError.LOGIN)
                 else:
                     logging.debug(" => prompt received")
                     logging.debug(" => wait for commands")
@@ -163,12 +259,10 @@ class expect_conmux(expect_generic):
             logging.debug(" => wait for commands")
 
         self.p.sendline("\r")
-        res = self.expect([self.newline+"#",self.newline+"(.*)#"])
+        res = self.expect([self.newline+"# ",self.newline+"(.*)# "])
         if res == 1:
             elems=self.p.match.group(1).split(self.newline)
-            self.prompt=elems[len(elems)-1]+"#"
-        
-
+            self.prompt=elems[len(elems)-1]+"# "
 
     def disconnect(self):
         logging.info('Exit')
@@ -178,21 +272,21 @@ class expect_conmux(expect_generic):
         logging.info(' => Done')
 
 class expect_ssh(expect_generic):
-    def __init__(self,addr,logfile):
-        self.addr=addr
+    def __init__(self,mandatory,logfile):
+        self.addr=mandatory[0]
+        self.passwd=mandatory[1]
         expect_generic.__init__(self,'ssh',self.addr,logfile)
         self.newline='\r\n'
         self.prompt='#'
 
-    def connect(self,password=None):
+    def connect(self,args):
+        self.p.setwinsize(1000,1000)
         i = self.expect(["ssh: Could not resolve hostname (.*): Name or service not known",
-                  "Are you sure you want to continue connecting \(yes/no\)\?",
-                  "password:",
-                  "# "])
+                  "Are you sure you want to continue connecting \(yes/no\)\?","password:", "# "])
         if i == 0:
             logging.error("### ERROR ### Name or service not known: %s" % self.p.match.group(1))
             print "### ERROR ### Name or service not known: %s" % self.p.match.group(1)
-            sys.exit(1)
+            raise expectError(expectError.UNKNOWN_NAME % self.p.match.group(1))
 
         elif i == 1:
             self.p.sendline("yes")
@@ -206,16 +300,15 @@ class expect_ssh(expect_generic):
                 logging.info(' => Connection Done')
                 logging.debug(" => prompt received")
                 logging.debug(" => wait for commands")
-
         elif i == 2:
             while True:
-                if password: self.p.sendline(password)
+                if self.passwd: self.p.sendline(self.passwd)
                 else:        self.p.sendline("")
                 j = self.expect(["Permission denied","password:","# "])
                 if j==0:
                     logging.error("### ERROR ### Permission denied, check if password is correct")
                     print "### ERROR ### Permission denied, check if password is correct"
-                    sys.exit(1)
+                    raise expectError(expectError.PERMISSION_DENIED)
                 elif j==1:
                     continue
                 elif j==2:
@@ -230,14 +323,12 @@ class expect_ssh(expect_generic):
             logging.debug(" => prompt received")
             logging.debug(" => wait for commands")
 
-        self.p.setwinsize(1000,1000)
-
         self.p.sendline("\r")
-        res = self.expect([self.newline+"#",self.newline+"(.*)# "])
+        res = self.expect([self.newline+"# ",self.newline+"(.*)# "])
         if res == 1:
             elems=self.p.match.group(1).split(self.newline)
-            self.prompt=elems[len(elems)-1]+"#"
-
+            self.prompt=elems[len(elems)-1]+"# "
+      
 
     def disconnect(self):
         logging.info('Exit')
@@ -247,21 +338,29 @@ class expect_ssh(expect_generic):
         logging.info(' => Done')
 
 class expect_scp(expect_generic):
-    def __init__(self,addr,logfile):
-        self.addr=addr
-        expect_generic.__init__(self,'scp',self.addr,logfile)
+    def __init__(self,mandatory,logfile):
+        self.src=mandatory[0]
+        self.dst=mandatory[1]
+
+        if ':' in self.src: self.src_addr=self.src.split(':')[0]
+        if ':' in self.dst: self.dst_addr=self.dst.split(':')[0]
+        self.src_passwd=mandatory[2]
+        self.dst_passwd=mandatory[3]
+
+        expect_generic.__init__(self,'scp',"%s %s" % (self.src,self.dst),logfile)
         self.newline='\r\n'
         self.prompt='#'
 
-    def connect(self,password=None):
-        i = self.expect(["ssh: Could not resolve hostname (.*): Name or service not known",
+    def connect(self,args):
+        i = self.expect(["Name or service not known",
                   "Are you sure you want to continue connecting \(yes/no\)\?",
-                  "password:",
-                  "# "])
+                  "%s(.*)'s password:" % self.newline,
+                  "# ", '(.*)'])
         if i == 0:
             logging.error("### ERROR ### Name or service not known: %s" % self.p.match.group(1))
             print "### ERROR ### Name or service not known: %s" % self.p.match.group(1)
-            sys.exit(1)
+            raise expectError(expectError.UNKNOWN_NAME % self.p.match.group(1))
+
 
         elif i == 1:
             self.p.sendline("yes")
@@ -269,7 +368,7 @@ class expect_scp(expect_generic):
             if j == 0:
                 logging.error("### ERROR ### Host key verification failed")
                 print "### ERROR ### Host key verification failed"
-                sys.exit(1)
+                raise expectError(expectError.HOST_KEY)
             
             elif j == 1:
                 logging.info(' => Connection Done')
@@ -277,7 +376,32 @@ class expect_scp(expect_generic):
                 logging.debug(" => wait for commands")
 
         elif i == 2:
-            self.p.sendline("yes")
+            if self.src_addr in self.p.group(1):
+                self.p.sendline(self.src_passwd)
+            elif self.dst_addr in self.p.group(1):
+                self.p.sendline(self.dst_passwd)
+
+            while True:
+                if self.src_addr in self.p.group(1): passwd = self.src_passwd
+                elif self.dst_addr in self.p.group(1): passwd = self.dst_passwd
+
+                if passwd: self.p.sendline(passwd)
+                else:      self.p.sendline("")
+
+                j = self.expect(["Permission denied","%s(.*)'s password:","# "])
+                if j==0:
+                    logging.error("### ERROR ### Permission denied, check if password is correct")
+                    print "### ERROR ### Permission denied, check if password is correct"
+                    raise expectError(expectError.PERMISSION_DENIED)
+
+                elif j==1:
+                    continue
+                elif j==2:
+                    logging.info(' => Connection Done')
+                    logging.debug(" => prompt received")
+                    logging.debug(" => wait for commands")
+                    break
+
 
         elif i == 3:
             logging.info(' => Connection Done')
@@ -303,21 +427,26 @@ def expect_exec_cmd(tool,mandatory_args,args):
         os.remove(args.logfile)
     logging.basicConfig(filename=args.logfile,filemode='a',level=verbosity_level,format='%(filename)s - %(levelname)s - %(message)s')
 
-    t = tool(mandatory_args[0],args.logfile)
-    if mandatory_args[1]: t.connect(mandatory_args[1])
-    else:                 t.connect()
+    try:
+        t = tool(mandatory_args,args.logfile)
+        t.connect(args)
 
-    if args.commands:
-        commands_list=create_commands_list(args.commands)
-        A_cmds=t.exec_commands(commands_list)
+        if args.reboot:
+            t.reboot()
 
+        elif args.commands:
+            commands_list=create_commands_list(args.commands)
+            A_cmds=t.exec_commands(commands_list)
 
-    t.disconnect()
+            t.disconnect()
 
-    return A_cmds
+            return A_cmds
+
+    except:
+        sys.exit(1)
 
 def conmux_exec_cmd(args):
-    mandatory_args=[args.device,args.user]
+    mandatory_args=[args.device,args.user_passwd]
     return expect_exec_cmd(expect_conmux,mandatory_args,args)
 
 def ssh_exec_cmd(args):
@@ -325,7 +454,7 @@ def ssh_exec_cmd(args):
     return expect_exec_cmd(expect_ssh,mandatory_args,args)
 
 def scp_exec_cmd(args):
-    mandatory_args=[args.addr,args.password]
+    mandatory_args=[args.src,args.dst,args.src_password,args.dst_password]
     return expect_exec_cmd(expect_scp,mandatory_args,args)
 
 def main():
@@ -342,12 +471,14 @@ def main():
                        help="verbosity level, default=0")
     parser.add_argument("--version",         action="version", version='Version v0.1', 
                        help="print version")
+    parser.add_argument("--reboot",          action="store_true", dest='reboot', default=False,
+                       help="reboot host")
 
     subparsers=parser.add_subparsers(help="tool_name used for connection")
     parser_conmux=subparsers.add_parser('conmux-console', help="connection via conmux-console.")
     parser_conmux.add_argument('device',  metavar='device', 
                         help="device_name to connect")
-    parser_conmux.add_argument('-u', "--user",      action="store",      dest='user', default="root", 
+    parser_conmux.add_argument('-u', "--user",      action="store",      dest='user_passwd', default="root", 
                         help="user[:password] for connection, default user is root")
     parser_conmux.add_argument('commands', metavar='CMD', nargs='+',
                        help="command(s) (can be file name) to be executed")
@@ -363,10 +494,10 @@ def main():
     parser_ssh.set_defaults(func=ssh_exec_cmd)
 
     parser_scp=subparsers.add_parser('scp', help="copy file via ssh.")
-    parser_scp.add_argument('addr',  metavar='addr', 
-                        help="addr to connect")
-    parser_scp.add_argument('-p', "--password",      action="store",      dest='password', 
-                        help="password used to connect")
+    parser_scp.add_argument('-s', "--src-password",      action="store",      dest='src_password', 
+                        help="source password used to connect source")
+    parser_scp.add_argument('-d', "--dst-password",      action="store",      dest='dst_password', 
+                        help="destination password used to connect destination")
     parser_scp.add_argument('src', metavar='SRC',
                        help="local source file to be copied")
     parser_scp.add_argument('dst', metavar='DST',
