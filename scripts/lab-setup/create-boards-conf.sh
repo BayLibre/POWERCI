@@ -152,7 +152,7 @@ wait_board_restart()
         sleep 1
         echo_log -o "-ne" "."
         #ping -c1 ${!board_ip_name} | grep "64 bytes from $board_ip_name"
-        if [ "`ping -c1 ${board_ip} | grep \"64 bytes from ${board_ip}\"`" != "" ]; then
+        if [ ! -z "`ping -c 1 ${board_ip} | grep '1 received'`" ]; then
             echo_debug "    => restarted after $((i+5)) sec"
             restarted="yes"
             break
@@ -487,9 +487,19 @@ copy_check_sshkey()
     if [ "${src_device}" == "local" ]; then
         #check if source key exist
         #if source key is ~/.ssh/id_rsa.pub and do not exist, create it
-        if [ "${src_device}" == "local" ] && [[ ${src_file} =~ ".ssh/id_rsa.pub" ]] && [ ! -f "${src_file}" ]; then
-            echo_log "    => Create {src_device} rsa key"
-            ssh-keygen -N "" -f "`echo ${src_file} | awk -F'.pub' '{ print $1 }'`"
+        if [ "${src_file}" == ".ssh/id_rsa.pub" ]; then
+            src_file=`echo ~/${src_file}`
+
+            if [ ! -f ${src_file} ]; then
+                echo_log "    => Create ${src_device} rsa key"
+                ssh-keygen -N "" -f "`echo ${src_file} | awk -F'.pub' '{ print $1 }'`"
+                if [ $? -ne 0 ]; then
+                    echo_error "### ERROR ### Unable to create local pub key"
+                    echo_debug "copy_check_sshkey END"
+                    return 1
+                fi
+                ls -lsa ~/.ssh/
+            fi
         fi
 
     else
@@ -550,7 +560,8 @@ copy_check_sshkey()
 
         #check or create src public key
 cat << EOF > commands.cmd
-if [ ! -f ".ssh/id_rsa.pub" ]; then ssh-keygen -N "" -f ".ssh/id_rsa"; fi
+if [ ! -f "~/.ssh/id_rsa.pub" ]; then ssh-keygen -N "" -f ~/.ssh/id_rsa; fi
+ls -lsa ~/.ssh/
 EOF
         if [ "${src_cnx_type}" == "ssh" ]; then
             expect_exec_cmd "ssh" "${src_user}@${src_ip}" commands.cmd
@@ -621,9 +632,25 @@ EOF
     if [ "${src_device}" != "local" ]; then
         if [ "${src_cnx_type}" == "ssh" ] && [ "${dst_cnx_type}" == "ssh" ]; then
             echo_log "    => Copy $src_file key via '${src_cnx_type}' to '${dst_cnx_dest}'"
-            echo_debug "scp ${src_cnx_dest}:${src_file} ${dst_cnx_dest}:.ssh/${src_cnx_dest}_id_rsa.pub"
-            scp ${src_cnx_dest}:${src_file} ${dst_cnx_dest}:.ssh/${src_cnx_dest}_id_rsa.pub
+            echo_debug "scp ${src_cnx_dest}:${src_file} ${src_cnx_dest}_id_rsa.pub"
+            scp ${src_cnx_dest}:${src_file} ${src_cnx_dest}_id_rsa.pub
             rc=$?
+            if [ $rc -ne 0 ]; then
+                echo_error "### ERROR ### Fail to copy public key from ${src_cnx_dest} to `uname -n`"
+                echo_debug "copy_check_sshkey END"
+                return 1
+            fi
+            echo_debug "scp ${src_cnx_dest}_id_rsa.pub ${dst_cnx_dest}:.ssh/${src_cnx_dest}_id_rsa.pub"
+            scp ${src_cnx_dest}_id_rsa.pub ${dst_cnx_dest}:.ssh/${src_cnx_dest}_id_rsa.pub
+            rc=$?
+            if [ $rc -ne 0 ]; then
+                echo_error "### ERROR ### Fail to copy public key from `uname -n` to ${dst_cnx_dest}"
+                echo_debug "copy_check_sshkey END"
+                return 1
+            fi
+
+            key_user_addr=${src_cnx_dest}
+
         elif [ "${src_cnx_type}" != "ssh" ]; then
             echo_log "    => Copy $src_file key via '${src_cnx_type}' to local"
             cat << EOF > commands.cmd
@@ -650,7 +677,7 @@ EOF
             else
                 echo_log "    => Copy local $src_file key via '${dst_cnx_type}' to ${dst_cnx_dest}"
                 cat << EOF > commands.cmd
-echo '${public_key}' > .ssh/$src_file
+echo '${public_key}' > ~/.ssh/$src_file
 EOF
                 expect_exec_cmd "${dst_cnx_type}" "${dst_cnx_dest}" commands.cmd
                 rc=$?
@@ -670,32 +697,13 @@ EOF
         else
             echo_log "    => Copy local ${src_file} key via '${dst_cnx_type}' to ${dst_cnx_dest}"
             cat << EOF > commands.cmd
-echo '${public_key}' > .ssh/${key_user_addr}_id_rsa.pub
+echo '${public_key}' > ~/.ssh/${key_user_addr}_id_rsa.pub
 EOF
             expect_exec_cmd "${dst_cnx_type}" "${dst_cnx_dest}" commands.cmd
             rc=$?
         fi        
     fi
 
-    #give authorized key via conmux
-    #ret_code=0
-    #echo_log "    => Copy $src_file key via '${cnx_type}' to '${cnx_dest}'"
-
-    #public_key=`cat $src_file`
-    #key_user_addr=`awk '{ print $NF }' $src_file`
-
-    #if [ "${cnx_type}" == "ssh" ]; then
-    #    echo_debug "scp $src_file.pub ${cnx_dest}:.ssh/${key_user_addr}_id_rsa.pub"
-    #    scp $src_file ${cnx_dest}:.ssh/${key_user_addr}_id_rsa.pub
-    #    rc=$?
-    #else
-
-#cat << EOF > commands.cmd
-#echo '${public_key}' > .ssh/${key_user_addr}_id_rsa.pub
-#EOF
-    #    expect_exec_cmd "${cnx_type}" "${cnx_dest}" commands.cmd
-    #    rc=$?
-    #fi
     if [ $rc -ne 0 ]; then
         echo_error "### ERROR ### Fail to copy public key to ${device_name}"
         echo_debug "copy_check_sshkey END"
@@ -703,9 +711,9 @@ EOF
     fi
 
     cat << EOF > commands.cmd
-if [ -f ".ssh/authorized_keys" ];then sed '/${key_user_addr}/d' .ssh/authorized_keys > .ssh/authorized_keys.1; mv .ssh/authorized_keys.1 .ssh/authorized_keys; fi
-cat .ssh/${key_user_addr}_id_rsa.pub >> .ssh/authorized_keys
-rm -f .ssh/${key_user_addr}_id_rsa.pub
+if [ -f "~/.ssh/authorized_keys" ];then sed '/${key_user_addr}/d' ~/.ssh/authorized_keys > ~/.ssh/authorized_keys.1; mv ~/.ssh/authorized_keys.1 ~/.ssh/authorized_keys; fi
+cat ~/.ssh/${key_user_addr}_id_rsa.pub >> ~/.ssh/authorized_keys
+rm -f ~/.ssh/${key_user_addr}_id_rsa.pub
 EOF
     expect_exec_cmd "${dst_cnx_type}" "${dst_cnx_dest}" commands.cmd
     rc=$?
@@ -721,17 +729,27 @@ EOF
 #    cat << EOF > commands.cmd
 #reboot
 #EOF
+    echo_log "    => Check if ${dst_ip} is restarted"
     echo_debug "copy_check_sshkey - expect_exec_reboot \"${dst_cnx_type}\" \"${dst_cnx_dest}\""
     expect_exec_reboot "${dst_cnx_type}" "${dst_cnx_dest}"
-    #wait_board_restart ${dst_ip}
+    echo_debug "copy_check_sshkey - wait_board_restart \"${dst_ip}\""
+    wait_board_restart "${dst_ip}"
+    if [ "${src_device}" != "local" ]; then
+        echo_log "    => Check if ${src_ip} is restarted" 
+        echo_debug "copy_check_sshkey - wait_board_restart \"${src_ip}\""
+        wait_board_restart ${src_ip}
+    fi
 
-
-    #retest ping
+    #retest destination ping
+    echo_log "    => Check if ${dst_addr} is pingable"
     dst_addr_ext=""
+    echo_debug "ping ${dst_addr} -c 1 > /dev/null 2>&1"
     ping ${dst_addr} -c 1 > /dev/null 2>&1
     if [ $? -ne 0 ]; then
+        echo_debug "ping ${dst_addr}.local -c 1 > /dev/null 2>&1"
         ping ${dst_addr}.local -c 1 > /dev/null 2>&1
         if [ $? -ne 0 ]; then
+            echo_debug "ping ${dst_ip} -c 1 > /dev/null 2>&1"
             ping ${dst_ip} -c 1 > /dev/null 2>&1
             if [ $? -ne 0 ]; then
                 echo_error "### ERROR ### ${dst_addr} still not pingable"
@@ -739,21 +757,21 @@ EOF
                 return 1
             else
                 #only ip is pingable (addr issue) use ssh with ip
-                cnx_dest="${dst_user}@${dst_ip}"
+                dst_cnx_dest="${dst_user}@${dst_ip}"
             fi
         else
             #addr.local is pingable, use ssh with addr.local
             dst_addr_ext=".local"
-            cnx_dest="${dst_user}@${dst_addr}${dst_addr_ext}"
+            dst_cnx_dest="${dst_user}@${dst_addr}${dst_addr_ext}"
         fi
     else
-        cnx_dest="${dst_user}@${dst_addr}"     
+        dst_cnx_dest="${dst_user}@${dst_addr}"     
     fi
 
-    #recheck SSH cnx
-    if [ "${cnx_dest}" != "" ]; then 
+    #recheck destination SSH cnx from local
+    if [ "${dst_cnx_dest}" != "" ]; then 
         echo_log "    => Check ssh connection from `uname -n` to ${dst_addr} after key copy"
-        check_ssh_cnx "${cnx_dest}"
+        check_ssh_cnx "${dst_cnx_dest}"
         rc=$?
 
         if [ $rc -ne 0 ]; then 
@@ -764,6 +782,84 @@ EOF
     else
         echo_debug "copy_check_sshkey END"
         return 1
+    fi
+
+    #if source is not local, need to retest also ping and ssh cnx
+    if [ "${src_device}" != "local" ]; then
+        echo_log "    => Check if ${src_addr} is pingable"
+        src_addr_ext=""
+        echo_debug "ping ${src_addr} -c 1 > /dev/null 2>&1"
+        ping ${src_addr} -c 1 > /dev/null 2>&1
+        if [ $? -ne 0 ]; then
+            echo_debug "ping ${src_addr}.local -c 1 > /dev/null 2>&1"
+            ping ${src_addr}.local -c 1 > /dev/null 2>&1
+            if [ $? -ne 0 ]; then
+                echo_debug "ping ${src_ip} -c 1 > /dev/null 2>&1"
+                ping ${src_ip} -c 1 > /dev/null 2>&1
+                if [ $? -ne 0 ]; then
+                    echo_error "### ERROR ### ${src_addr} still not pingable"
+                    echo_debug "copy_check_sshkey END"
+                    return 1
+                else
+                    #only ip is pingable (addr issue) use ssh with ip
+                    src_cnx_dest="${src_user}@${src_ip}"
+                fi
+            else
+                #addr.local is pingable, use ssh with addr.local
+                src_addr_ext=".local"
+                src_cnx_dest="${src_user}@${src_addr}${src_addr_ext}"
+            fi
+        else
+            src_cnx_dest="${src_user}@${src_addr}"     
+        fi
+
+        if [ "${src_cnx_dest}" != "" ]; then 
+            echo_log "    => Check ssh connection from `uname -n` to ${src_addr} after key copy"
+            check_ssh_cnx "${src_cnx_dest}"
+            rc=$?
+
+            if [ $rc -ne 0 ]; then 
+                echo_error "### ERROR ### ssh connection from local `uname -n` does not work for ${src_addr}"
+                echo_debug "copy_check_sshkey END"
+                return 1
+            fi
+        else
+            echo_debug "copy_check_sshkey END"
+            return 1
+        fi
+
+
+        #we also need to check ping and ssh cnx from src to dst
+        echo_log "    => Check ssh connection from ${src_addr} to ${dst_addr} after key copy"
+
+        echo_debug "Create and copy file ssh.expect to ${src_cnx_dest}"
+        cat << EOF > ssh.expect
+#!/usr/bin/expect
+spawn ssh ${dst_user}@${dst_ip} pwd
+expect {
+      "\*yes/no\*"    { send "yes\r"; exp_continue }
+}
+EOF 
+        scp ssh.expect ${src_cnx_dest}:ssh.expect
+
+        cat << EOF > commands.cmd
+ping ${dst_addr} -c 1 > /dev/null 2>&1
+ping ${dst_addr}.local -c 1 > /dev/null 2>&1
+ping ${dst_ip} -c 1 > /dev/null 2>&1
+
+if [ -z "\`which expect\`" ]; then sudo apt-get install expect; fi
+
+expect ssh.expect
+
+EOF
+        expect_exec_cmd "ssh" "${src_cnx_dest}" commands.cmd
+        rc=$?
+        if [ $rc -ne 0 ]; then 
+            echo_error "### ERROR ### ssh connection does not work from ${src_addr} to ${dst_addr}"
+            echo_debug "copy_check_sshkey END"
+            return 1
+        fi
+
     fi
 
 
