@@ -106,6 +106,7 @@ expect_exec_cmd()
 
 }
 
+###################################################################################
 expect_exec_reboot()
 {
     echo_debug "expect_exec_reboot START"
@@ -243,18 +244,8 @@ EOF
                     echo_warning "### WARNING ### ${board} address is not changed !"
                 fi
 
-#cat << EOF > commands.cmd
-#reboot
-#EOF
                 echo_debug "expect_exec_reboot \"conmux-console\" \"${board}\""
                 expect_exec_reboot "conmux-console" "${board}"
-                #i=0
-                #while [ $i -lt 30 ]; do
-                #    sleep 1
-                #    echo_log -o "-ne" "."
-                #    i=$(($i + 1))
-                #done
-                
 
             fi
 
@@ -412,22 +403,6 @@ EOF
 
 
 ###################################################################################
-## check an ssh cnx to dest_addr
-#  if cnx succeed, get its user@address with command 'whoami' and 'uname -n'
-###################################################################################
-check_ssh_cnx()
-{
-cat << EOF > commands.cmd
-pwd
-EOF
-
-    expect_exec_cmd "ssh" "$1" commands.cmd
-    rc=$?
-    
-    return $rc
-}
-
-###################################################################################
 ## create ssh system between lab, acme and dut
 ###################################################################################
 copy_check_sshkey()
@@ -503,59 +478,17 @@ copy_check_sshkey()
         fi
 
     else
-        #check src ssh connection
-        echo_log "    => Check if ${src_addr} is pingable"
-        src_addr_ext=""
-        ping ${src_addr} -c 1 > /dev/null 2>&1
-        if [ $? -ne 0 ]; then
-            ping ${src_addr}.local -c 1 > /dev/null 2>&1
-            if [ $? -ne 0 ]; then
-                ping ${src_ip} -c 1 > /dev/null 2>&1
-                if [ $? -ne 0 ]; then
-                    #nothing is pingable, use conmux
-                    src_cnx_type="conmux-console"
-                    if [ -z "$src_device" ]; then
-                        echo_error "ssh connection does not work for ${src_addr}"
-                        echo_error "conmux device name is mandatory"
-                        usage
-                        echo_debug "copy_check_sshkey END"
-                        exit 1
-                    else
-                        src_dest="${src_device}"
-                    fi
-                else
-                    #only ip is pingable (addr issue) use ssh with ip
-                    src_cnx_type="ssh"
-                    src_cnx_dest="${src_user}@${src_ip}"
-                fi
-            else
-                #addr.local is pingable, use ssh with addr.local
-                src_addr_ext=".local"
-                src_cnx_type="ssh"
-                src_cnx_dest="${src_user}@${src_addr}${src_addr_ext}"
-            fi
-        else
+        echo_log "    => Check ssh connection from `uname -n` to ${src_addr}"
+        echo_debug "bash check-ssh.sh \"${src_user}\" \"${src_addr} ${src_addr}.local ${src_ip}\" > check-ssh.res"
+        bash check-ssh.sh "${src_user}" "${src_addr} ${src_addr}.local ${src_ip}"
+        rc=$?
+        echo_debug "`cat check-ssh.res`"
+        if [ $rc -eq 0 ]; then 
             src_cnx_type="ssh"
-            src_cnx_dest="${src_user}@${src_addr}"     
-        fi
-
-        #check src SSH connexion
-        if [ "${src_cnx_type}" == "ssh" ]; then
-            echo_log "    => Check ssh connection from `uname -n` to ${src_ip} already exist"
-            check_ssh_cnx "${src_cnx_dest}"
-        
-            if [ $rc -ne 0 ]; then
-                src_cnx_type="conmux-console"
-                if [ -z "$src_device" ]; then
-                    echo_error "ssh connection does not work for ${src_addr}"
-                    echo_error "conmux device name is mandatory"
-                    usage
-                    echo_debug "copy_check_sshkey END"
-                    exit 1
-                else
-                    src_cnx_dest="${src_device}"
-                fi
-            fi
+            src_cnx_dest="${src_user}@${src_ip}"
+        else 
+            src_cnx_type="conmux-console"
+            src_cnx_dest="${src_device}"
         fi
 
         #check or create src public key
@@ -563,68 +496,23 @@ cat << EOF > commands.cmd
 if [ ! -f "~/.ssh/id_rsa.pub" ]; then ssh-keygen -N "" -f ~/.ssh/id_rsa; fi
 ls -lsa ~/.ssh/
 EOF
-        if [ "${src_cnx_type}" == "ssh" ]; then
-            expect_exec_cmd "ssh" "${src_user}@${src_ip}" commands.cmd
-            rc=$?
-        else
-            expect_exec_cmd "conmux-console" "${src_device}" commands.cmd
-        fi
+        expect_exec_cmd "${src_cnx_type}" "${src_cnx_dest}" commands.cmd
+        rc=$?
 
     fi
 
     #check dest ssh connection
-    echo_log "    => Check if ${dst_addr} is pingable"
-    dst_addr_ext=""
-    ping ${dst_addr} -c 1 > /dev/null 2>&1
-    if [ $? -ne 0 ]; then
-        ping ${dst_addr}.local -c 1 > /dev/null 2>&1
-        if [ $? -ne 0 ]; then
-            ping ${dst_ip} -c 1 > /dev/null 2>&1
-            if [ $? -ne 0 ]; then
-                #nothing is pingable, use conmux
-                dst_cnx_type="conmux-console"
-                if [ -z "$dst_device" ]; then
-                    echo_error "ssh connection does not work for ${dst_addr}"
-                    echo_error "conmux device name is mandatory"
-                    usage
-                    echo_debug "copy_check_sshkey END"
-                    exit 1
-                else
-                    dst_cnx_dest="${dst_device}"
-                fi
-            else
-                #only ip is pingable (addr issue) use ssh with ip
-                dst_cnx_type="ssh"
-                dst_cnx_dest="${dst_user}@${dst_ip}"
-            fi
-        else
-            #addr.local is pingable, use ssh with addr.local
-            dst_addr_ext=".local"
-            dst_cnx_type="ssh"
-            dst_cnx_dest="${dst_user}@${dst_addr}${dst_addr_ext}"
-        fi
-    else
+    echo_log "    => Check ssh connection from `uname -n` to ${dst_addr}"
+    echo_debug "bash check-ssh.sh ${dst_user} \"${dst_addr} ${dst_addr}.local ${dst_ip}\" > check-ssh.res"
+    bash check-ssh.sh "${dst_user}" "${dst_addr} ${dst_addr}.local ${dst_ip}"
+    rc=$?
+    echo_debug "`cat check-ssh.res`"
+    if [ $rc -eq 0 ]; then 
         dst_cnx_type="ssh"
-        dst_cnx_dest="${dst_user}@${dst_addr}"     
-    fi
-
-    #check SSH connexion
-    if [ "${dst_cnx_type}" == "ssh" ]; then
-        echo_log "    => Check ssh connection from `uname -n` to ${dst_ip} already exist"
-        check_ssh_cnx "${dst_cnx_dest}"
-        
-        if [ $rc -ne 0 ]; then
-            dst_cnx_type="conmux-console"
-            if [ -z "$dst_device" ]; then
-                echo_error "ssh connection does not work for ${dst_addr}"
-                echo_error "conmux device name is mandatory"
-                usage
-                echo_debug "copy_check_sshkey END"
-                exit 1
-            else
-                dst_cnx_dest="${dst_device}"
-            fi
-        fi
+        dst_cnx_dest="${dst_user}@${dst_ip}"
+    else 
+        dst_cnx_type="conmux-console"
+        dst_cnx_dest="${dst_device}"
     fi
 
     #if src is not local, src_cnx_type AND dst_cnx_type is ssh, use scp src:file dst:file
@@ -724,106 +612,43 @@ EOF
         return 1
     fi
 
-
-    #reboot board
-#    cat << EOF > commands.cmd
-#reboot
-#EOF
-    echo_log "    => Check if ${dst_ip} is restarted"
+    #Note: restart of acme will also restart dut's BUT sometime, eth iface of dut will not start
+    #      So, after restart acme, you must restart dut with dut-hard-reset that cut off input alim
+    echo_log "    => Check if ${dst_addr} (${dst_ip}) is restarted"
     echo_debug "copy_check_sshkey - expect_exec_reboot \"${dst_cnx_type}\" \"${dst_cnx_dest}\""
     expect_exec_reboot "${dst_cnx_type}" "${dst_cnx_dest}"
     echo_debug "copy_check_sshkey - wait_board_restart \"${dst_ip}\""
     wait_board_restart "${dst_ip}"
     if [ "${src_device}" != "local" ]; then
-        echo_log "    => Check if ${src_ip} is restarted" 
+        echo_log "    => Check if ${src_addr} (${src_ip}) is restarted" 
         echo_debug "copy_check_sshkey - wait_board_restart \"${src_ip}\""
-        wait_board_restart ${src_ip}
+        wait_board_restart "${src_ip}"
     fi
 
-    #retest destination ping
-    echo_log "    => Check if ${dst_addr} is pingable"
-    dst_addr_ext=""
-    echo_debug "ping ${dst_addr} -c 1 > /dev/null 2>&1"
-    ping ${dst_addr} -c 1 > /dev/null 2>&1
-    if [ $? -ne 0 ]; then
-        echo_debug "ping ${dst_addr}.local -c 1 > /dev/null 2>&1"
-        ping ${dst_addr}.local -c 1 > /dev/null 2>&1
-        if [ $? -ne 0 ]; then
-            echo_debug "ping ${dst_ip} -c 1 > /dev/null 2>&1"
-            ping ${dst_ip} -c 1 > /dev/null 2>&1
-            if [ $? -ne 0 ]; then
-                echo_error "### ERROR ### ${dst_addr} still not pingable"
-                echo_debug "copy_check_sshkey END"
-                return 1
-            else
-                #only ip is pingable (addr issue) use ssh with ip
-                dst_cnx_dest="${dst_user}@${dst_ip}"
-            fi
-        else
-            #addr.local is pingable, use ssh with addr.local
-            dst_addr_ext=".local"
-            dst_cnx_dest="${dst_user}@${dst_addr}${dst_addr_ext}"
-        fi
-    else
-        dst_cnx_dest="${dst_user}@${dst_addr}"     
-    fi
+    sleep 10
 
-    #recheck destination SSH cnx from local
-    if [ "${dst_cnx_dest}" != "" ]; then 
-        echo_log "    => Check ssh connection from `uname -n` to ${dst_addr} after key copy"
-        check_ssh_cnx "${dst_cnx_dest}"
-        rc=$?
-
-        if [ $rc -ne 0 ]; then 
-            echo_error "### ERROR ### ssh connection does not work for ${dst_addr}"
-            echo_debug "copy_check_sshkey END"
-            return 1
-        fi
-    else
+    #retest destination ssh
+    echo_log "    => Check ssh connection from `uname -n` to ${dst_addr} after key copy"
+    echo_debug "bash check-ssh.sh \"${dst_user}\" \"${dst_addr} ${dst_addr}.local ${dst_ip}\" > check-ssh.res"
+    bash check-ssh.sh "${dst_user}" "${dst_addr} ${dst_addr}.local ${dst_ip}"
+    rc=$?
+    echo_debug "`cat check-ssh.res`"
+    if [ $rc -ne 0 ]; then 
+        echo_error "### ERROR ### ssh connection does not work from local `uname -n` to ${dst_addr}"
         echo_debug "copy_check_sshkey END"
         return 1
     fi
 
+
     #if source is not local, need to retest also ping and ssh cnx
     if [ "${src_device}" != "local" ]; then
-        echo_log "    => Check if ${src_addr} is pingable"
-        src_addr_ext=""
-        echo_debug "ping ${src_addr} -c 1 > /dev/null 2>&1"
-        ping ${src_addr} -c 1 > /dev/null 2>&1
-        if [ $? -ne 0 ]; then
-            echo_debug "ping ${src_addr}.local -c 1 > /dev/null 2>&1"
-            ping ${src_addr}.local -c 1 > /dev/null 2>&1
-            if [ $? -ne 0 ]; then
-                echo_debug "ping ${src_ip} -c 1 > /dev/null 2>&1"
-                ping ${src_ip} -c 1 > /dev/null 2>&1
-                if [ $? -ne 0 ]; then
-                    echo_error "### ERROR ### ${src_addr} still not pingable"
-                    echo_debug "copy_check_sshkey END"
-                    return 1
-                else
-                    #only ip is pingable (addr issue) use ssh with ip
-                    src_cnx_dest="${src_user}@${src_ip}"
-                fi
-            else
-                #addr.local is pingable, use ssh with addr.local
-                src_addr_ext=".local"
-                src_cnx_dest="${src_user}@${src_addr}${src_addr_ext}"
-            fi
-        else
-            src_cnx_dest="${src_user}@${src_addr}"     
-        fi
-
-        if [ "${src_cnx_dest}" != "" ]; then 
-            echo_log "    => Check ssh connection from `uname -n` to ${src_addr} after key copy"
-            check_ssh_cnx "${src_cnx_dest}"
-            rc=$?
-
-            if [ $rc -ne 0 ]; then 
-                echo_error "### ERROR ### ssh connection from local `uname -n` does not work for ${src_addr}"
-                echo_debug "copy_check_sshkey END"
-                return 1
-            fi
-        else
+        echo_log "    => Check ssh connection from `uname -n` to ${src_addr} after key copy"
+        echo_debug "bash check-ssh.sh \"${src_user}\" \"${src_addr} ${src_addr}.local ${src_ip}\" > check-ssh.res"
+        bash check-ssh.sh "${src_user}" "${src_addr} ${src_addr}.local ${src_ip}"
+        rc=$?
+        echo_debug "`cat check-ssh.res`"
+        if [ $rc -ne 0 ]; then 
+            echo_error "### ERROR ### ssh connection does not work from local `uname -n` to ${src_addr}"
             echo_debug "copy_check_sshkey END"
             return 1
         fi
@@ -832,25 +657,17 @@ EOF
         #we also need to check ping and ssh cnx from src to dst
         echo_log "    => Check ssh connection from ${src_addr} to ${dst_addr} after key copy"
 
-        echo_debug "Create and copy file ssh.expect to ${src_cnx_dest}"
-        cat << EOF > ssh.expect
-#!/usr/bin/expect
-spawn ssh ${dst_user}@${dst_ip} pwd
-expect {
-      "\*yes/no\*"    { send "yes\r"; exp_continue }
-}
-EOF 
-        scp ssh.expect ${src_cnx_dest}:ssh.expect
+        echo_debug "Copy file check-ssh.sh to ${src_cnx_dest}"
+        echo_debug "scp check-ssh.sh ${src_cnx_dest}:check-ssh.sh"
+        scp check-ssh.sh ${src_cnx_dest}:check-ssh.sh
+        if [ $? -ne 0 ]; then
+            echo_error "### ERROR ### Cannot test ssh connection from ${src_addr} to ${dst_addr}"
+            echo_debug "copy_check_sshkey END"
+            return 1
+        fi
 
         cat << EOF > commands.cmd
-ping ${dst_addr} -c 1 > /dev/null 2>&1
-ping ${dst_addr}.local -c 1 > /dev/null 2>&1
-ping ${dst_ip} -c 1 > /dev/null 2>&1
-
-if [ -z "\`which expect\`" ]; then sudo apt-get install expect; fi
-
-expect ssh.expect
-
+bash check-ssh.sh "${dst_user}" "${dst_addr} ${dst_addr}.local ${dst_ip}"
 EOF
         expect_exec_cmd "ssh" "${src_cnx_dest}" commands.cmd
         rc=$?
@@ -916,78 +733,11 @@ create_ssh()
         if [ "${device_name}" != "acme" ]; then
             echo_log "    Copy ${device_name} public key to acme"
 
-            #echo_log "    => Check and Create pub key of ${device_name}"
-
-#cat << EOF > commands.cmd
-#if [ ! -f ".ssh/id_rsa.pub" ]; then ssh-keygen -N "" -f ".ssh/id_rsa"; fi
-#EOF
-
-            #expect_exec_cmd "ssh" "${device_user}@${device_ip}" commands.cmd
-            #rc=$?
-
-            #if [ $rc -ne 0 ]; then 
-            #    echo_error "Public key for ${device_name} does not exist and creation fails"
-            #else
-                echo_debug "copy_check_sshkey -s \"${device_name}@${device_user}@${device_addr}@${device_ip}\" \"acme@${acme_device_user}@${acme_device_addr}@${acme_device_ip}:.ssh/${device_name}_id_rsa.pub\""
-                copy_check_sshkey -s "${device_name}@${device_user}@${device_addr}@${device_ip}" "acme@${acme_device_user}@${acme_device_addr}@${acme_device_ip}:.ssh/${device_name}_id_rsa.pub"
-                if [ $? -eq 0 ]; then echo_log "    Done copy `uname -n` public key to ${device_addr}"; fi
+            echo_debug "copy_check_sshkey -s \"${device_name}@${device_user}@${device_addr}@${device_ip}\" \"acme@${acme_device_user}@${acme_device_addr}@${acme_device_ip}:.ssh/${device_name}_id_rsa.pub\""
+            copy_check_sshkey -s "${device_name}@${device_user}@${device_addr}@${device_ip}" "acme@${acme_device_user}@${acme_device_addr}@${acme_device_ip}:.ssh/${device_name}_id_rsa.pub"
+            if [ $? -eq 0 ]; then echo_log "    Done copy `uname -n` public key to ${device_addr}"; fi
                 
-
-
-
-                #echo_log "    => Get pub key from ${device_name}"
-                #echo_debug "scp ${device_user}@${device_ip}:~/.ssh/id_rsa.pub ${device_name}_id_rsa.pub"
-
-                #scp ${device_user}@${device_ip}:~/.ssh/id_rsa.pub ${device_name}_id_rsa.pub
-                #if [ $? != 0 ]; then 
-                #    echo_error "Fail to copy public key of ${device_name} to acme"
-                #else
-                #    echo_log "    => Copy key ${device_name}_id_rsa.pub onto acme"
-                #    copy_debug "copy_check_sshkey -s \":${device_name}_id_rsa.pub\" \"acme@${acme_device_user}@${acme_device_addr}@${acme_device_ip}:.ssh/${device_name}_id_rsa.pub\""
-                #    copy_check_sshkey -s ":${device_name}_id_rsa.pub" "acme@${acme_device_user}@${acme_device_addr}@${acme_device_ip}:.ssh/${device_name}_id_rsa.pub"
-                #    if [ $? -ne 0 ]; then
-                #        echo_error "Fail to copy public key of ${device_name} to acme"
-                #    else
-                #        echo_debug "    => Copy script expect_exec_cmd.py to ${device_name} "
-                #        echo_debug "scp expect_exec_cmd.py ${device_user}@${device_ip}:expect_exec_cmd.py"
-                #        scp expect_exec_cmd.py ${device_user}@${device_ip}:expect_exec_cmd.py
-                #        if [ $? -ne 0 ]; then 
-                #            echo_error "Fail to check ssh cnx from ${device_name} to acme"
-
-                #        else 
-                #            echo_debug "    => Install python and pexpect on ${device_name}"
-#cat << EOF > commands.cmd
-#sudo apt-get install python
-#sudo apt-get install python-pexpect
-#EOF
-
-                #            expect_exec_cmd "ssh" "${device_user}@${device_ip}" commands.cmd
-                #            rc=$?
-                #            if [ $? != 0 ]; then 
-                #                echo_error "Fail to check ssh cnx from ${device_name} to acme"
-                #            else                 
-                #                echo_log "    => Check ssh connection from ${device_name} to acme"
-
-#cat << EOF > commands.cmd
-#python expect_exec_cmd.py ssh ${acme_device_user}@${acme_device_ip} "ls"
-#python expect_exec_cmd.py ssh ${acme_device_user}@${acme_device_addr} "ls"
-#python expect_exec_cmd.py ssh ${acme_device_user}@${acme_device_addr}.local "ls"
-#EOF
-
-                #                expect_exec_cmd "ssh" "${device_user}@${device_ip}" commands.cmd
-                #                rc=$?
-
-                #                if [ $? != 0 ]; then 
-                #                    echo_error "Fail to check ssh cnx from ${device_name} to acme"
-                #                else                 
-                #                    echo_log "    Done copy ${device_name} public key to ${acme_device_addr}"
-                #                    echo_log ""
-                #                fi
-                #            fi
-                #        fi
-                #    fi
-                #fi
-            #fi        
+      
         fi
             
     done
