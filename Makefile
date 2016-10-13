@@ -3,7 +3,7 @@
 #
 # Note that if you create you own ~/.lavarc it should be used instead.
 #
-export TOPDIR=/home/powerci/POWERCI
+export TOPDIR=/home/test-lava/POWERCI
 
 ## This is where we store the attached files for each job.
 #  This is used by lava-ci
@@ -14,9 +14,9 @@ export ATTACHMENTS=/var/www/html/kernel-ci/attachments
 #
 export WORKSPACE=$(TOPDIR)/SRC
 
-export LAVA_USER=powerci
-export BUNDLE_STREAM=/anonymous/powerci/
-export LAVA_TOKEN=n4q5ksdmahr600i5aa4h38taobfexu939gg1c53xgz89iuce25cc98pouy06iypqm0kk8l58luu4ukgzsnkf6fef4afma3f38qijw0lcfnxgz4wtdx152j90a6r0hqxu
+export LAVA_USER=test-lava
+export BUNDLE_STREAM=/anonymous/test-lava/
+export LAVA_TOKEN=j10qssg47jnjctju8t1jrz8fxpj0e1kutnmjsrz8btoj05k4gynj3j99e30gg09fm23aikygux4hatjue0ngtaw14d5s3wl4c106ellif150azfrq6m0acqsi08z0sdo
 
 export TAG?=mainline/v4.6-rc3
 
@@ -27,8 +27,8 @@ export TAG?=mainline/v4.6-rc3
 
 RESULTS=lab-baylibre-$(subst /,_,$(TAG)).json
 
-export LAVA_SERVER_IP=lava.baylibre.com
-export LAVA_SERVER=http://lava.baylibre.com:10080/RPC2/
+export LAVA_SERVER_IP=testlava-server.local
+export LAVA_SERVER=http://testlava-server.local/RPC2/
 
 export LAB_BAYLIBRE_TARGETS?=beaglebone-black panda-es
 #LAB_BAYLIBRE_TARGETS_64=juno
@@ -147,7 +147,7 @@ $(HOME)/.lavarc:
 	@echo "server: "$(LAVA_SERVER) >> $@
 	@echo "token: "$(LAVA_TOKEN) >> $@
 	@echo "stream: "$(BUNDLE_STREAM) >> $@
-	@echo "username: powerci" >> $@
+	@echo "username: $(LAVA_USER)" >> $@
 	@echo "jobs:" >> $@
 	@echo "[kernelci]" >> $@
 	@echo "token: "$(KERNELCI_TOKEN) >> $@
