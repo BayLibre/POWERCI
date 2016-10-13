@@ -641,6 +641,10 @@ create_conmux()
 
 
     #check if cu-loop is in /usr/local/bin, copy it instead
+    if [ "`which cu`" == "" ];then
+        echo_warning "CU is not yet installed. installation will start now."
+        sudo apt-get install cu
+    fi
     if [ ! -f /usr/local/bin/cu-loop ];then
         echo_debug "copy cu-loop to /usr/local/bin"
         sudo cp -f cu-loop /usr/local/bin/.
