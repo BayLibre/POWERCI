@@ -7,6 +7,8 @@ while true; do
   # NOTE: cu src needs mofication to add --nortscts option
   # c.f. Debian bug: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=336996
   #
-  test -e $DEV && /usr/local/bin/cu -l $DEV -s $BAUD --parity=none --nostop --nortscts dir
+  test -e $DEV && /usr/local/bin/cu -l $DEV -s $BAUD --parity=none --nostop --nortscts dir 
+  test $? -ne 0 && echo "ERROR during cu-loop execution";exit 1
+
   sleep 0.5
 done
