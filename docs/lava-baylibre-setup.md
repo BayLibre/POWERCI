@@ -29,7 +29,7 @@ Re-instate vim as the standard editor with:
 
 Make sure to create an ssh id_rsa.pub key for the powerci user, and add it to the various git repos used (baylibre and github)
 
-` mkdir -p /home/powerci/POWERCI && cd POWERCI`
+` mkdir -p /home/[username]/POWERCI && cd POWERCI`
 
 ` repo init -u git@github.com:BayLibre/manifests.git -m powerci/default.xml`
 
@@ -76,14 +76,18 @@ THis branch is pulled by the manifest to SRC/lava-dispatcher.
 It can be used in place of the python packages installed by the debian package.
 In lava-baylibre:/usr/lib/python2.7/dist-packages, create a symlink like:
 
-> sudo ln -s /home/powerci/POWERCI/SRC/lava-dispatcher/lava_dispatcher lava_dispatcher  
+> sudo ln -s /home/[username]/POWERCI/SRC/lava-dispatcher/lava_dispatcher lava_dispatcher  
 
 
 ##  LAVA fs-overlays ##
 
 Some standard LAVA-debian files needs being simlinked to this repo, like for instance:
 
-` sudo ln -s ~/POWERCI/fs-overlay/etc/lava-dispatcher/device-types /etc/lava-dispatcher/device-types`
+```
+sudo ln -s ~/POWERCI/fs-overlay/etc/lava-dispatcher/devices /etc/lava-dispatcher/devices
+sudo ln -s ~/POWERCI/fs-overlay/etc/lava-dispatcher/device-types /etc/lava-dispatcher/device-types
+sudo ln -s ~/POWERCI/fs-overlay/etc/lava-dispatcher/lava-dispatcher.conf /home/[username]/POWERCI/fs-overlay/etc/lava-dispatcher/lava-dispatcher.conf
+```
 
 check in fs-overlay to not miss anything, for instance:
 
@@ -94,7 +98,6 @@ check in fs-overlay to not miss anything, for instance:
 
 ### Dispatcher Population ###
 
- * /etc/ser2net.conf
  * /etc/lava-dispatcher/device-types
  * /etc/lava-dispatcher/devices
 

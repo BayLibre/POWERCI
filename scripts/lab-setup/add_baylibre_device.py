@@ -28,12 +28,12 @@
 # intended to gain Django settings.
 
 
-import optparse
+import argparse
 import simplejson
 import subprocess
 import os
 import tempfile
-
+import logging
 
 def template_bundle_stream():
     """
@@ -110,6 +110,7 @@ def template_device_type():
     model to a template JSON. The script needs to be updated
     when new migrations are added which affect the DeviceType model.
     """
+    logging.debug("template_device_type START")
     type_json = subprocess.check_output([
         "lava-server",
         "manage",
@@ -128,10 +129,17 @@ def template_device_type():
     template['pk'] = "DEVICE_TYPE"
     template['fields']['health_check_job'] = ''
     template['fields']['display'] = True
+
+    logging.debug(str(template))
+    logging.debug("template_device_type END")
     return template
 
 
-def main(dt, name, options):
+def add_baylibre_device(dt, name, options):
+    if options.verbosity: verbosity_level=logging.DEBUG
+    else:                 verbosity_level=logging.INFO
+    logging.basicConfig(filename=options.logfile,filemode='a',level=verbosity_level,format='%(filename)s - %(levelname)s - %(message)s')
+
     config = {}
     sequence = [
         'device_type',
@@ -143,35 +151,40 @@ def main(dt, name, options):
         'power_off_cmd'
     ]
     default_type = os.path.join("/etc/lava-dispatcher/device-types", "%s%s" % (dt, ".conf"))
+    logging.info("device type exist?: %s" % default_type)
     if not os.path.exists(default_type):
+        logging.info(" => No")
         # FIXME: integrate this into lava CLI to prevent the need
         # for this hardcoded path.
         default_type = os.path.join(
             "/usr/lib/python2.7/dist-packages/lava_dispatcher/",
             "default-config/lava-dispatcher/device-types/",
             "%s%s" % (dt, ".conf"))
+        logging.info("so, device type exist?: %s" % default_type)
         if not os.path.exists(default_type):
+            logging.info(" => No")
+            logging.error("'%s' is not an existing device-type for this instance." % dt)
+            logging.error("A default device_type configuration needs to be written as %s" % default_type)
             print ("'%s' is not an existing device-type for this instance." % dt)
             print ("A default device_type configuration needs to be written as %s" % default_type)
             exit(1)
+        logging.info(" => Yes")
+    
     config['device_type'] = dt
     deviceconf = os.path.join("/etc/lava-dispatcher/devices", "%s%s" % (name, ".conf"))
+    logging.info("device name exist?: %s" % deviceconf)
     if os.path.exists(deviceconf):
+        logging.info(" => No")
+        logging.error("'%s' is an existing device on this instance." % name)
+        logging.error("If you want to add another device of type %s, use a different devicename." % default_type)
         print ("'%s' is an existing device on this instance." % name)
         print ("If you want to add another device of type %s, use a different hostname." % default_type)
         exit(1)
     config['hostname'] = name
     # FIXME: need a config file for daemon, pdu hostname and telnet ser2net host
     if options.pduport:
-        try:
-            options.pduport = int(options.pduport)
-        except ValueError:
-            print ("Unable to parse %s as a port number" % options.pduport)
-            exit(1)
         if options.acmecmd:
-#            config['hard_reset_command'] = str(options.acmecmd) + " dut-hard-reset " + str(options.pduport) + " &"
-#            config['power_off_cmd'] = str(options.acmecmd) + " dut-switch-off " + str(options.pduport) + " &"
-            config['host_hook_enter_command'] = "iio-probe-start " + str(int(options.pduport)-1)
+            config['host_hook_enter_command'] = "iio-probe-start " + options.acmecmd + " " + str(int(options.pduport)-1)
             config['host_hook_exit_command'] = "iio-probe-stop " + str(int(options.pduport)-1)
         else:
             config['hard_reset_command'] = "/usr/bin/pduclient " \
@@ -183,13 +196,9 @@ def main(dt, name, options):
                                   "--hostname baylibre-acme.local --command off " \
                                   "--port %02d" % options.pduport
     else:
+        logging.warning("Skipping hard_reset_command for %s" % name)
         print("Skipping hard_reset_command for %s" % name)
     if options.telnetport:
-        try:
-            options.telnetport = int(options.telnetport)
-        except ValueError:
-            print ("Unable to parse %s as a port number" % options.telnetport)
-            exit(1)
         config['connection_command'] = "telnet localhost %d" % options.telnetport
     else:
         config['connection_command'] = "conmux-console %s" % name
@@ -202,7 +211,9 @@ def main(dt, name, options):
     if options.simulate:
         for key in sequence:
             if key in config:
+                logging.info("%s = %s" % (key, config[key]))
                 print "%s = %s" % (key, config[key])
+        logging.info(simplejson.dumps(template, indent=4))
         print simplejson.dumps(template, indent=4)
         return 0
     with open(deviceconf, 'w') as f:
@@ -211,7 +222,9 @@ def main(dt, name, options):
                 f.write("%s = %s\n" % (key, config[key]))
     fd, json = tempfile.mkstemp(suffix=".json", text=True)
     if options.bundlestream:
-        template.append(template_bundle_stream())
+        res=template_bundle_stream()
+        if res != None:
+            template.append(res)
     with open(json, 'w') as f:
         simplejson.dump(template, f, indent=4)
         f.write("\n")
@@ -224,6 +237,7 @@ def main(dt, name, options):
         "%s" % json
     ])
     if loaded:
+        logging.error("lava-server manage loaddata failed for %s" % json)
         print "lava-server manage loaddata failed for %s" % json
         exit(1)
     else:
@@ -231,8 +245,7 @@ def main(dt, name, options):
         os.unlink(json)
     return 0
 
-if __name__ == '__main__':
-    usage = "Usage: %prog devicetype hostname [-p pduport] [-t telnetport] [-a acmecmd] "
+def main():
     description = "LAVA device helper. Allows local admins to add devices to a " \
                   "running instance by creating the database entry and creating an initial " \
                   "device configuration. Optionally add the pdu port and ser2net port to use " \
@@ -241,22 +254,41 @@ if __name__ == '__main__':
                   "Django admin interface. This script is intended for initial setup only." \
                   "pduport settings are intended to support lavapdu only." \
                   "telnetport settings are intended to support ser2net only."
-    pduport = None
-    acmecmd = ""
-    telnetport = None
-    parser = optparse.OptionParser(usage=usage, description=description)
-    parser.add_option("-a", "--acmecmd", dest="acmecmd", action="store",
-                      type="string", help="ACME ssh url for on/off ex: ssh -t root@lab-baylibre-acme.local")
-    parser.add_option("-p", "--pduport", dest="pduport", action="store",
-                      type="string", help="PDU Portnumber (ex: 04)")
-    parser.add_option("-t", "--telnetport", dest="telnetport", action="store",
-                      type="string", help="ser2net port (ex: 4003)")
-    parser.add_option("-b", "--bundlestream", dest="bundlestream", action="store_true",
-                      help="add a lab health bundle stream if no streams exist.")
-    parser.add_option("-s", "--simulate", dest="simulate", action="store_true",
-                      help="output the data files without adding the device.")
-    (options, args) = parser.parse_args()
-    if len(args) < 2:
-        print("Missing devicetype and/or device hostname option, try -h for help")
-        exit(1)
-    main(args[0], args[1], options)
+
+    #parser = argparse.ArgumentParser(usage=usage, description=description)
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument('devicetype',  metavar='devicetype', nargs=1, 
+                       help="devicetype to use")
+    parser.add_argument('devicename', metavar='devicename', nargs=1,
+                       help="devicename to use")
+    parser.add_argument("-a", "--acmecmd",      action="store",      dest="acmecmd",    
+                       default="",
+                       help="ACME ssh url for on/off ex: ssh -t root@lab-baylibre-acme.local")
+    parser.add_argument("-p", "--pduport",      action="store",      dest="pduport",    
+                       type=int,
+                       help="PDU Portnumber (ex: 04)")
+    parser.add_argument("-t", "--telnetport",   action="store",      dest="telnetport", 
+                       type=int,
+                       help="ser2net port (ex: 4003)")
+    parser.add_argument("-b", "--bundlestream", action="store_true", dest="bundlestream",
+                       help="add a lab health bundle stream if no streams exist.")
+    parser.add_argument("-s", "--simulate",     action="store_true", dest="simulate",
+                       help="output the data files without adding the device.")
+    parser.add_argument("-l", "--logfile",      action="store",      dest='logfile',  
+                       default="add_baylibre_device.log", 
+                       help="logfile to use, default is conmux_cmd.log")
+    parser.add_argument("-v", "--verbosity",    action="store_true", dest='verbosity', 
+                       default=False, 
+                       help="verbosity level, default=0")
+    parser.add_argument("--version",            action="version", version='Version v1.1', 
+                       help="print version")
+
+    args=parser.parse_args()
+
+    #pdb.set_trace()
+    add_baylibre_device(args.devicetype[0], args.devicename[0], args)
+
+
+if __name__ == '__main__':
+    main()
+

@@ -1,2 +1,2 @@
 #!/bin/sh
-lava connect dut0-bbb
+lava connect am335x-boneblack
