@@ -5,6 +5,8 @@ BAUD=${2:-115200}
 CU=/usr/local/bin/cu
 #CU=/usr/bin/cu
 
+test -e $CU || echo "ERROR $CU no such file";exit 1
+
 while true; do
   #
   # NOTE: cu src needs mofication to add --nortscts option
