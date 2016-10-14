@@ -4,6 +4,8 @@ set -o errtrace
 #set -o nounset #Error if variable not set before use  
 #set -o errexit #Exit for any error found... 
 
+VERSION="0.3"
+
 BLUE=`tput setaf 4`
 NC=`tput sgr0`
 
@@ -12,7 +14,7 @@ NC=`tput sgr0`
 ###################################################################################
 usage()
 {
-    echo "usage: create-conmux.sh [OPTION]"
+    echo "usage: create-boards-conf.sh [OPTION]"
     echo ""
     echo "[OPTION]"
     echo "    -h | --help:        Print this usage"
@@ -20,6 +22,7 @@ usage()
     echo "    -l | --logfile:     Logfile to use"
     echo "    -v | --verbose:     Debug traces"
     echo "    -d | --device:      Device to create"
+    echo "    -s | --status:      Get status"
     echo ""
 }
 
@@ -28,8 +31,10 @@ usage()
 ###################################################################################
 parse_args()
 {
+    STATUS="no"
+
     ## Analyse input parameter
-    TEMP=`getopt -o chl:d:v --long clear,help,logfile:,device:,version -- "$@"`
+    TEMP=`getopt -o chl:d:sv --long clear,help,logfile:,device:,status,version -- "$@"`
 
     if [ $? != 0 ] ; then echo_error "Terminating..." >&2 ; exit 1 ; fi
 
@@ -40,7 +45,9 @@ parse_args()
             -h|--help)
                 usage; exit 0; shift;;
             --version)
-                echo "Version: $VERSION"; exit 0; shift;;
+                echo "create-boards-conf.sh version: $VERSION" 
+                python expect_exec_cmd.py --version
+                exit 0; shift;;
             -v)
                 DEBUG=$1
                 DEBUG_LVL=$((${DEBUG_LVL}+1))
@@ -54,16 +61,98 @@ parse_args()
             -d|--device)
                 DEVICE_LIST="${2//,/ }"
                 shift 2;;
+            -s|--status)
+                STATUS="yes"
+                shift;;
             --) shift ; break ;;
             *) echo_error "Internal error!" ; exit 1 ;;
         esac
     done
-    echo_debug "START create_conmux"
+    echo_debug "START create-boards-conf"
     echo_debug "Analyse input argument"
     echo_debug "Logfile:       ${LOGFILE}"
     echo_debug "Debug Enabled: ${DEBUG_EN}"
     echo_debug "Device list:   ${DEVICE_LIST}"
 
+    if [ "${STATUS}" == "yes" ]; then
+        get_status
+        exit 0
+    fi
+}
+
+###################################################################################
+## 
+###################################################################################
+get_status()
+{
+    echo_debug "START get_status"
+
+    if [ ! -z "`echo ${DEVICE_LIST} | grep acme`" ]; then
+        #Acme probe connected to something
+        get_acme_probe
+        echo_log ""
+        echo_log "ACME Probe connected:"
+        for p in ${ACME_PROBE}; do echo_info "  $p"; done
+    fi
+
+    echo_log ""
+    echo_log "Devices address found:"
+    echo "" > tmp.tmp
+    for d in ${DEVICE_LIST}; do
+        device=`echo $d | awk -F: '{ print $1 }'`
+
+        get_board_addr $device
+    done
+
+    echo_log ""
+    echo_log "SSH status:"
+    for d in ${DEVICE_LIST}; do
+        device=`echo $d | awk -F: '{ print $1 }'`
+        BOARD_ADDR_NAME="`echo ${device//-/_} | sed 's/./\U&/g'`_ADDR"
+        BOARD_IP_NAME="`echo ${device//-/_} | sed 's/./\U&/g'`_IP"
+
+        user=`echo ${!BOARD_ADDR_NAME} | awk -F\@ '{ print $1 }'`
+        addr=`echo ${!BOARD_ADDR_NAME} | awk -F\@ '{ print $2 }'`
+        ip=${!BOARD_IP_NAME}
+
+        if [ "$device" == "acme" ]; then object="ACME"
+        else object="DUT"
+        fi 
+      
+        warn="no"
+        if [ "${!BOARD_ADDR_NAME}" == "None" ] && [ "${!BOARD_IP_NAME}" == "None" ]; then
+            echo_error "* LAB `uname -n` to ${object} ($device): FAIL"
+            continue
+        elif [ "${!BOARD_ADDR_NAME}" == "None" ]; then
+            echo_log "* LAB `uname -n` to ${object} ($device):"
+            bash check-ssh.sh "${user}" "${ip}" | grep -v "Check ssh connection" > check-ssh.res
+            warn="yes"
+        elif [ "${!BOARD_IP_NAME}" == "None" ]; then
+            echo_log "* LAB `uname -n` to ${object} ($device):"
+            bash check-ssh.sh "${user}" "${addr} ${addr}.local" | grep -v "Check ssh connection" > check-ssh.res
+            warn="yes"
+        else
+            echo_log "* LAB `uname -n` to ${object} ($device):"
+            bash check-ssh.sh "${user}" "${addr} ${addr}.local ${ip}" | grep -v "Check ssh connection" > check-ssh.res
+        fi
+
+        echo "" > tmp.tmp
+        save_IFS=$IFS
+        IFS=$'\n'
+        for line in `cat check-ssh.res`; do
+            if [ "`echo $line | grep NOK`" != "" ] || [ "`echo $line | grep \"not pingable\"`" != "" ]; then
+                echo_error "`echo ${line// - /    } | awk -F' => ' '{ print $1 \" \" $2}'`" >> tmp.tmp
+            elif [ "$warn" == "yes" ]; then
+                echo_warning "`echo ${line// - /    } | awk -F' => ' '{ print $1 \" \" $2}'`">> tmp.tmp
+            else
+                echo_info "`echo ${line// - /    } | awk -F' => ' '{ print $1 \" \" $2}'`">> tmp.tmp
+            fi     
+        done
+        IFS=$save_IFS
+        cat tmp.tmp | column -t
+    done
+
+    echo_debug "END get_status"
 }
 
 ###################################################################################
@@ -167,23 +256,15 @@ wait_board_restart()
 
     return $ret_code
 }
-
 ###################################################################################
-## check if environment variable upper(<device_name>)_ADDR exist or not
-#  Purpose a default upper(<device_name>)_ADDR to user that shall validate or enter a new one
-#  Put the validated upper(<device_name>)_ADDR in /etc/profile.d/lava_lab.sh that will contains some setup dedicated env variable
-###################################################################################
-board_addr()
+get_board_addr()
 {
-    echo_debug "START board_addr $1"
-
     board=$1
-    board_addr_name="`echo ${board//-/_} | sed 's/./\U&/g'`_ADDR"
-    board_ip_name="`echo ${board//-/_} | sed 's/./\U&/g'`_IP"
-    echo_debug "board_addr_name = ${board_addr_name}"
+    BOARD_ADDR_NAME="`echo ${board//-/_} | sed 's/./\U&/g'`_ADDR"
+    BOARD_IP_NAME="`echo ${board//-/_} | sed 's/./\U&/g'`_IP"
+    echo_debug "board_addr_name = ${BOARD_ADDR_NAME}"
 
-    if [ -z "`printenv | grep ${board_addr_name}`" ];then
-        echo_log "Get address of ${board}"
+    if [ -z "`printenv | grep ${BOARD_ADDR_NAME}`" ];then
 
 cat << EOF > commands.cmd
 ls
@@ -201,26 +282,105 @@ EOF
             user=$(cat commands.res | sed -e '1,/command: whoami/d' -e '/rc/,$d' -e 's/response: //')
             ip=$(cat commands.res | sed -e '1,/command: ifconfig/d' -e '/rc/,$d' -e 's/response: //')
 
-            eval ${board_addr_name}="${user}@${addr}"
-            echo_debug "${board_addr_name} = ${!board_addr_name}"
-            eval ${board_ip_name}="${ip}"
-            echo_debug "${board_ip_name} = ${!board_ip_name}"
+            eval ${BOARD_ADDR_NAME}="${user}@${addr}"
+            export ${BOARD_ADDR_NAME}="${user}@${addr}"
+            echo_debug "${BOARD_ADDR_NAME} = ${!BOARD_ADDR_NAME}"
+            eval ${BOARD_IP_NAME}="${ip}"
+            export ${BOARD_IP_NAME}="${ip}"
+            echo_debug "${BOARD_IP_NAME} = ${!BOARD_IP_NAME}"
 
-            echo_log "Address read in ${board} is set to:"
-            echo_info "${!board_addr_name} (${!board_ip_name})"
-            echo_question -o "-n" "Correct? (Y|n): "
-            read resp
+            #echo_log "Address read in ${board} is set to:"
+            echo_info "$board: ${!BOARD_ADDR_NAME} IP=${!BOARD_IP_NAME}" >> tmp.tmp
+        else
+            eval ${BOARD_ADDR_NAME}="None"
+            export ${BOARD_ADDR_NAME}="None"
+            eval ${BOARD_IP_NAME}="None"
+            export ${BOARD_IP_NAME}="None"
+            echo_warning "$board: ${!BOARD_ADDR_NAME} IP=${!BOARD_IP_NAME}" >> tmp.tmp
+        fi
+
+    else
+        eval ${BOARD_ADDR_NAME}=`echo ${BOARD_ADDR_NAME}`
+        eval ${BOARD_IP_NAME}=`echo ${BOARD_IP_NAME}`
+        if [ "${!BOARD_ADDR_NAME}" == "None" -o "${!BOARD_ADDR_NAME}" == "" ] || [ "${!BOARD_IP_NAME}" == "None" -o "${!BOARD_IP_NAME}" == "" ]; then
+            echo_warning "$board: ${!BOARD_ADDR_NAME} IP=${!BOARD_IP_NAME}" >> tmp.tmp
+        else
+            echo_info "$board: ${!BOARD_ADDR_NAME} IP=${!BOARD_IP_NAME}" >> tmp.tmp
+        fi
+    fi
+
+    cat tmp.tmp | column -t
+}
+
+###################################################################################
+## check if environment variable upper(<device_name>)_ADDR exist or not
+#  Purpose a default upper(<device_name>)_ADDR to user that shall validate or enter a new one
+#  Put the validated upper(<device_name>)_ADDR in /etc/profile.d/lava_lab.sh that will contains some setup dedicated env variable
+###################################################################################
+board_addr()
+{
+    echo_debug "START board_addr $1"
+
+    board=$1
+    get_board_addr $board
+    if [ "${!BOARD_ADDR_NAME}" == "None" ]; then
+        while true; do
+            echo_question -o "-n" "Please enter manually an address for ${board} (user@addr): "
+            read addr
+            eval ${BOARD_ADDR_NAME}="${addr}"
+            echo_debug "${BOARD_ADDR_NAME} = ${!BOARD_ADDR_NAME}"
+            if [ ! -z `echo ${!BOARD_ADDR_NAME}` ];then break; fi
+        done
+
+    else
+        echo_question -o "-n" "Is it Correct? (Y|n): "
+        read resp
+
+    #board_addr_name="`echo ${board//-/_} | sed 's/./\U&/g'`_ADDR"
+    #board_ip_name="`echo ${board//-/_} | sed 's/./\U&/g'`_IP"
+
+
+    #echo_debug "board_addr_name = ${board_addr_name}"
+
+    #if [ -z "`printenv | grep ${board_addr_name}`" ];then
+    #    echo_log "Get address of ${board}"
+
+#cat << EOF > commands.cmd
+#ls
+#whoami
+#uname -n
+#ifconfig eth0 | grep 'inet addr' | sed 's/\s\+/ /g' | cut -d: -f2 | cut -d' ' -f1
+#EOF
+
+    #    expect_exec_cmd "conmux-console" "${board}" "commands.cmd"
+    #    rc=$?
+ 
+    #    if [ $rc -eq 0 ]; then
+    #        echo_debug "`cat commands.res`"
+    #        addr=$(cat commands.res | sed -e '1,/command: uname/d' -e '/rc/,$d' -e 's/response: //')
+    #        user=$(cat commands.res | sed -e '1,/command: whoami/d' -e '/rc/,$d' -e 's/response: //')
+    #        ip=$(cat commands.res | sed -e '1,/command: ifconfig/d' -e '/rc/,$d' -e 's/response: //')
+
+    #        eval ${board_addr_name}="${user}@${addr}"
+    #        echo_debug "${board_addr_name} = ${!board_addr_name}"
+    #        eval ${board_ip_name}="${ip}"
+    #        echo_debug "${board_ip_name} = ${!board_ip_name}"
+
+    #        echo_log "Address read in ${board} is set to:"
+    #        echo_info "${!board_addr_name} (${!board_ip_name})"
+    #        echo_question -o "-n" "Correct? (Y|n): "
+    #        read resp
 
             if [ "$resp" == "n" ];then
                 while true; do
                     echo_question -o "-n" "Please enter your new address for ${board}: "
                     read addr
-                    eval ${board_addr_name}="${addr}"
-                    echo_debug "${board_addr_name} = ${!board_addr_name}"
-                    if [ ! -z `echo ${!board_addr_name}` ];then break; fi
+                    eval ${BOARD_ADDR_NAME}="${addr}"
+                    echo_debug "${BOARD_ADDR_NAME} = ${!BOARD_ADDR_NAME}"
+                    if [ ! -z `echo ${!BOARD_ADDR_NAME}` ];then break; fi
                 done
 
-                newaddr=`echo ${!board_addr_name} | cut -d@ -f2`
+                newaddr=`echo ${!BOARD_ADDR_NAME} | cut -d@ -f2`
 
                 echo_log "Change address of ${board}"
 cat << EOF > commands.cmd
@@ -237,9 +397,9 @@ EOF
                 if [ $rc -eq 0 ]; then
                     echo_debug "`cat commands.res`"
                     newaddrchg=$(cat commands.res | sed -e '1,/command: uname/d' -e '/rc/,$d' -e 's/response: //')
-                    eval ${board_addr_name}="${user}@${newaddrchg}"
+                    eval ${BOARD_ADDR_NAME}="${user}@${newaddrchg}"
                     echo_log "${board} address is changed to:"
-                    echo_info "${!board_addr_name}"
+                    echo_info "${!BOARD_ADDR_NAME}"
                 else
                     echo_warning "### WARNING ### ${board} address is not changed !"
                 fi
@@ -249,30 +409,59 @@ EOF
 
             fi
 
-        else
-            while true; do
-                echo_question -o "-n" "Please enter manually an address for ${board}: "
-                read addr
-                eval ${board_addr_name}="${addr}"
-                echo_debug "${board_addr_name} = ${!board_addr_name}"
-                if [ ! -z `echo ${!board_addr_name}` ];then break; fi
-            done
-        fi
+    #    else
+    #        while true; do
+    #            echo_question -o "-n" "Please enter manually an address for ${board}: "
+    #            read addr
+    #            eval ${board_addr_name}="${addr}"
+    #            echo_debug "${board_addr_name} = ${!board_addr_name}"
+    #            if [ ! -z `echo ${!board_addr_name}` ];then break; fi
+    #        done
+    #    fi
     fi
 
     if [ ! -f /etc/profile.d/lava_lab.sh ]; then
         touch /etc/profile.d/lava_lab.sh
     fi
 
-    test_line="${board_addr_name}=${!board_addr_name}"
+    test_line="${BOARD_ADDR_NAME}=${!BOARD_ADDR_NAME}"
     if [ -z "`cat /etc/profile.d/lava_lab.sh | grep ${test_line}`" ]; then
         tmp_file=`mktemp`
         echo_debug "File /etc/profile.d/lava_lab.sh: Add line \"${test_line}\""
-        echo "${board_addr_name}=${!board_addr_name}" >> ${tmp_file}
+        echo "${BOARD_ADDR_NAME}=${!BOARD_ADDR_NAME}" >> ${tmp_file}
         sudo mv -f ${tmp_file} /etc/profile.d/lava_lab.sh 
         echo_debug "END board_addr"
     fi
 
+}
+
+###################################################################################
+get_acme_probe()
+{
+    ACME_PROBE="None"
+cat << EOF > commands.cmd
+dut-dump-probe 0
+dut-dump-probe 1
+dut-dump-probe 2
+dut-dump-probe 3
+dut-dump-probe 4
+dut-dump-probe 5
+dut-dump-probe 6
+dut-dump-probe 7
+EOF
+    expect_exec_cmd "conmux-console" "acme" "commands.cmd"
+    rc=$?
+
+    if [ $rc -eq 0 ]; then
+        ACME_PROBE=""
+        for p in 0 1 2 3 4 5 6 7; do
+            avail=`cat commands.res | grep -A1 "dut-dump-probe $p" | grep "response:" | cut -d\: -f2`
+            if [ "`echo $avail | grep \"Could not open\"`" == "" ]; then
+                ACME_PROBE="${ACME_PROBE} Probe_$((p+1))"
+            fi
+        done
+        ACME_PROBE=`echo ${ACME_PROBE}| sed -e 's/^[ \t]*//' -e 's/*[ \t]$//'`
+    fi
 }
 ###################################################################################
 ## list boards connected to ACME
@@ -298,31 +487,32 @@ board_list()
     done
 
     #list of acme port available
-    acme_possible_port="None"
-cat << EOF > commands.cmd
-dut-dump-probe 0
-dut-dump-probe 1
-dut-dump-probe 2
-dut-dump-probe 3
-dut-dump-probe 4
-dut-dump-probe 5
-dut-dump-probe 6
-dut-dump-probe 7
-EOF
-    expect_exec_cmd "conmux-console" "acme" "commands.cmd"
-    rc=$?
+    get_acme_probe
+    #acme_possible_port="None"
+#cat << EOF > commands.cmd
+#dut-dump-probe 0
+#dut-dump-probe 1
+#dut-dump-probe 2
+#dut-dump-probe 3
+#dut-dump-probe 4
+#dut-dump-probe 5
+#dut-dump-probe 6
+#dut-dump-probe 7
+#EOF
+    #expect_exec_cmd "conmux-console" "acme" "commands.cmd"
+    #rc=$?
 
-    if [ $rc -eq 0 ]; then
-        acme_possible_port=""
-        for p in 0 1 2 3 4 5 6 7; do
-            avail=`cat commands.res | grep -A1 "dut-dump-probe $p" | grep "response:" | cut -d\: -f2`
-            if [ "`echo $avail | grep \"Could not open\"`" == "" ]; then
-                acme_possible_port="${acme_possible_port} Probe_$((p+1))"
-            fi
-        done
-        acme_possible_port=`echo ${acme_possible_port}| sed -e 's/^[ \t]*//' -e 's/*[ \t]$//'`
-    fi
-
+    #if [ $rc -eq 0 ]; then
+    #    acme_possible_port=""
+    #    for p in 0 1 2 3 4 5 6 7; do
+    #        avail=`cat commands.res | grep -A1 "dut-dump-probe $p" | grep "response:" | cut -d\: -f2`
+    #        if [ "`echo $avail | grep \"Could not open\"`" == "" ]; then
+    #            acme_possible_port="${acme_possible_port} Probe_$((p+1))"
+    #        fi
+    #    done
+    #    acme_possible_port=`echo ${acme_possible_port}| sed -e 's/^[ \t]*//' -e 's/*[ \t]$//'`
+    #fi
+    acme_possible_port=${ACME_PROBE}
 
     echo "NAME TYPE TTY ACME_PORT BAUD_RATE ADDR IP" > /tmp/lava_board
     echo_debug "DEVICE_LIST:\n ${DEVICE_LIST}"
@@ -480,7 +670,7 @@ copy_check_sshkey()
     else
         echo_log "    => Check ssh connection from `uname -n` to ${src_addr}"
         echo_debug "bash check-ssh.sh \"${src_user}\" \"${src_addr} ${src_addr}.local ${src_ip}\" > check-ssh.res"
-        bash check-ssh.sh "${src_user}" "${src_addr} ${src_addr}.local ${src_ip}"
+        bash check-ssh.sh "${src_user}" "${src_addr} ${src_addr}.local ${src_ip}" > check-ssh.res
         rc=$?
         echo_debug "`cat check-ssh.res`"
         if [ $rc -eq 0 ]; then 
@@ -504,7 +694,7 @@ EOF
     #check dest ssh connection
     echo_log "    => Check ssh connection from `uname -n` to ${dst_addr}"
     echo_debug "bash check-ssh.sh ${dst_user} \"${dst_addr} ${dst_addr}.local ${dst_ip}\" > check-ssh.res"
-    bash check-ssh.sh "${dst_user}" "${dst_addr} ${dst_addr}.local ${dst_ip}"
+    bash check-ssh.sh "${dst_user}" "${dst_addr} ${dst_addr}.local ${dst_ip}" > check-ssh.res
     rc=$?
     echo_debug "`cat check-ssh.res`"
     if [ $rc -eq 0 ]; then 
@@ -630,7 +820,7 @@ EOF
     #retest destination ssh
     echo_log "    => Check ssh connection from `uname -n` to ${dst_addr} after key copy"
     echo_debug "bash check-ssh.sh \"${dst_user}\" \"${dst_addr} ${dst_addr}.local ${dst_ip}\" > check-ssh.res"
-    bash check-ssh.sh "${dst_user}" "${dst_addr} ${dst_addr}.local ${dst_ip}"
+    bash check-ssh.sh "${dst_user}" "${dst_addr} ${dst_addr}.local ${dst_ip}" > check-ssh.res
     rc=$?
     echo_debug "`cat check-ssh.res`"
     if [ $rc -ne 0 ]; then 
@@ -644,7 +834,7 @@ EOF
     if [ "${src_device}" != "local" ]; then
         echo_log "    => Check ssh connection from `uname -n` to ${src_addr} after key copy"
         echo_debug "bash check-ssh.sh \"${src_user}\" \"${src_addr} ${src_addr}.local ${src_ip}\" > check-ssh.res"
-        bash check-ssh.sh "${src_user}" "${src_addr} ${src_addr}.local ${src_ip}"
+        bash check-ssh.sh "${src_user}" "${src_addr} ${src_addr}.local ${src_ip}" > check-ssh.res
         rc=$?
         echo_debug "`cat check-ssh.res`"
         if [ $rc -ne 0 ]; then 
@@ -886,7 +1076,6 @@ trapErr()
 create_board_conf()
 ###################################################################################
 {
-    VERSION="0.2"
 
     LOGFILE="create-boards-conf.log"
     DEBUG=""

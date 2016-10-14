@@ -70,13 +70,30 @@ usage: create-conmux.sh [OPTION]
 conmux current status
 ```
 $ ./create-conmux.sh --status
-USB devices connected (2):
-/dev/ttyUSB2
-/dev/ttyUSB3
+USB and devices connected (2):
+  /dev/ttyUSB0    acme
+  /dev/ttyUSB1    am335x-boneblack
 
-Boards connected to ttyUSB (2)
-  acme attached to ttyUSB2
-  am335x-boneblack attached to ttyUSB3
+Check if conmux config is started for each devices
+[sudo] password for test-lava: 
+  acme:              status=connected     started=YES  config_file=/etc/conmux/acme.cf              pid=17612  TCP=*:33910(LISTEN)
+  am335x-boneblack:  status=disconnected  started=YES  config_file=/etc/conmux/am335x-boneblack.cf  pid=17615  TCP=*:35183(LISTEN)
+
+ACME Probe connected:
+  Probe_1
+  Probe_2
+
+Devices address found:
+acme:  root@baylibre-acme-lab  IP=192.168.1.38
+acme:              root@baylibre-acme-lab  IP=192.168.1.38
+am335x-boneblack:  None                    IP=None
+
+SSH status:
+* LAB testlava-server to ACME (acme):
+  baylibre-acme-lab        not     pingable
+  baylibre-acme-lab.local  OK
+  192.168.1.38             OK
+* LAB testlava-server to DUT (am335x-boneblack): FAIL
 ```
 
 remove a board, and add a new one:
