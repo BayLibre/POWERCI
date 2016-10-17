@@ -599,7 +599,7 @@ EOF
     fi
 
     cat << EOF > commands.cmd
-if [ -f "~/.ssh/authorized_keys" ];then sed '/${key_user_addr}/d' ~/.ssh/authorized_keys > ~/.ssh/authorized_keys.1; mv ~/.ssh/authorized_keys.1 ~/.ssh/authorized_keys; fi
+if [ -f "~/.ssh/authorized_keys" ];then sed "/${key_user_addr}/d" ~/.ssh/authorized_keys > ~/.ssh/authorized_keys.1; mv ~/.ssh/authorized_keys.1 ~/.ssh/authorized_keys; fi
 cat ~/.ssh/${key_user_addr}_id_rsa.pub >> ~/.ssh/authorized_keys
 rm -f ~/.ssh/${key_user_addr}_id_rsa.pub
 EOF
