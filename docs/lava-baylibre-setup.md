@@ -15,7 +15,7 @@ otherwise some test stances will default to port 80 and fail.
 
 ## preliminary packages and services installation ##
 
-` sudo apt-get install openssh-server vim gitk git-gui pandoc lynx terminator conmux minicom repo qemu gcc-arm-linux-gnueabi tree meld`
+` sudo apt-get install openssh-server vim git gitk gitg git-gui pandoc lynx terminator conmux minicom phablet-tools qemu gcc-arm-linux-gnueabi tree meld`
 
 some required packages like ser2net and tftp-hpa are part of
 the lava macro package.
@@ -27,9 +27,9 @@ Re-instate vim as the standard editor with:
 
 ## Repo init ##
 
-Make sure to create an ssh id_rsa.pub key for the powerci user, and add it to the various git repos used (baylibre and github)
+Before proceeding next step, make sure to create an ssh id_rsa.pub key for `<username>`, and add it to the various git repos used (baylibre and github)
 
-` mkdir -p /home/[username]/POWERCI && cd POWERCI`
+` mkdir -p /home/$USER/POWERCI && cd POWERCI`
 
 ` repo init -u git@github.com:BayLibre/manifests.git -m powerci/default.xml`
 
@@ -37,95 +37,46 @@ Make sure to create an ssh id_rsa.pub key for the powerci user, and add it to th
 
 ## Lava installation ##
 
-### Adding the repository ###
+Launch: 
 
-According to the documentation, do the following:
+`lab-install.sh` 
 
-` sudo apt-get upgrade`
+And that's done !
+The script will ask you some detail during the run
 
-` wget http://images.validation.linaro.org/trusty-repo/trusty-repo.key.asc`
+Mainly, it will:
+* get and add repo from http://images.validation.linaro.org/trusty-repo/trusty-repo.key.asc
+* install lava "full set"
+  => This might need an interactive installation withou following detail
+  standalone server
+  Name "lab-baylibre"
+  Postgres port 5432
+  internet site config for email
+  fully qualified domain name: baylibre.com
+* Create symlink from /home/$USER/POWERCI/SRC/lava-dispatcher/lava_dispatcher -> /usr/lib/python2.7/dist-packages/lava_dispatcher
+  The power measurement hooks are currently located in a baylibre github branch.
+  This branch is pulled by the manifest to SRC/lava-dispatcher. 
+  It can be used in place of the python packages installed by the debian package.
+* Create following symlink for fs-overlay
+/etc/lava-dispatcher/devices -> /home/lavademo/POWERCI/fs-overlay/etc/lava-dispatcher/devices
+/etc/lava-dispatcher/device-types -> /home/lavademo/POWERCI/fs-overlay/etc/lava-dispatcher/device-types
+/etc/lava-dispatcher/lava-dispatcher.conf -> /home/$USER/POWERCI/fs-overlay/etc/lava-dispatcher/lava-dispatcher.conf
+* Check config file such as
+  /etc/lava-server/settings.conf
+  /etc/apache2/sites-available/powerci.conf
+  /etc/lava-dispatcher/device-types/*
+* Setup Apache
+  Enable site conf lava-server.conf instead of default
+  restart apache
+* Create a superuser account for lava-server
+  Note that for debug only, it is recommended to settings the log level for the server
+to 'debug', in file /etc/init.d/lava-server
+* Launch a script that will setup serial and ssh connection, and create needed config file for acme and DUT
+  See [setup-lab.md](setup-lab.md)
 
-` sudo apt-key add trusty-repo.key.asc`
-
-` sudo apt-get update`
-
-### Installing the LAVA "full set" ###
-
-` sudo apt-get install lava`
-
- * NFS          is installed by the lava pkg, with exports defaulting to /var/lib/lava/dispatcher/tmp
- * TFTP-HPA     is installed by the lava pkg, with exports defaulting to /var/lib/lava/dispatcher/tmp
-(see /etc/default/tftpd-hpa)
-
-this manual step might be necessary:
-
-> sudo cp /usr/share/lava-dispatcher/tftpd-hpa /etc/default/tftpd-hpa
-
-### Interactive installation option ###
- * standalone server
- * Name "lab-baylibre"
- * Postgres port 5432
- * internet site config for email
- * fully qualified domain name: baylibre.com
-
-## Using Local changes to the lava-dispatcher
-
-The power measurement hooks are currently located in a baylibre github branch.
-THis branch is pulled by the manifest to SRC/lava-dispatcher. 
-
-It can be used in place of the python packages installed by the debian package.
-In lava-baylibre:/usr/lib/python2.7/dist-packages, create a symlink like:
-
-> sudo ln -s /home/[username]/POWERCI/SRC/lava-dispatcher/lava_dispatcher lava_dispatcher  
-
-
-##  LAVA fs-overlays ##
-
-Some standard LAVA-debian files needs being simlinked to this repo, like for instance:
-
-```
-sudo ln -s ~/POWERCI/fs-overlay/etc/lava-dispatcher/devices /etc/lava-dispatcher/devices
-sudo ln -s ~/POWERCI/fs-overlay/etc/lava-dispatcher/device-types /etc/lava-dispatcher/device-types
-sudo ln -s ~/POWERCI/fs-overlay/etc/lava-dispatcher/lava-dispatcher.conf /home/[username]/POWERCI/fs-overlay/etc/lava-dispatcher/lava-dispatcher.conf
-```
-
-check in fs-overlay to not miss anything, for instance:
-
-### General server branding ###
-
- * /etc/lava-server/settings.conf
- * /etc/apache2/sites-available/powerci.conf
-
-### Dispatcher Population ###
-
- * /etc/lava-dispatcher/device-types
- * /etc/lava-dispatcher/devices
 
 ## Initial LAVA Server Administration ##
 
-### Apache site enabling
-
-Query the active site with:
-
-<code>
-powerci@lab-baylibre:~$ sudo a2query -s
-000-default (enabled by site administrator)
-</code>
-
-You may now disable the default site, and enable the lava instance:
-
-> sudo a2dissite 000-default
-
-> sudo a2ensite lava-server.conf
-
-> sudo service apache2 restart
-
-### Create the LAVA superuser account ###
-
-> sudo lava-server manage createsuperuser --username lab-admin --email=lab-admin@baylibre.com
-
-for debug only, it is recommended to settings the log level for the server
-to 'debug', in file /etc/init.d/lava-server
 
 ### Users and Groups ###
 
