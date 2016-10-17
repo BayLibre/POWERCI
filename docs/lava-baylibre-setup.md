@@ -96,9 +96,11 @@ Mainly, it will:
   Note that for debug only, it is recommended to settings the log level for the server
 to 'debug', in file /etc/init.d/lava-server
 
-* Launch a script that will setup serial and ssh connection, and create needed config file for acme and DUT
+* Launch following script that will setup serial and ssh connection, and create needed config file for acme and DUT
 
-  See [setup-lab.md](setup-lab.md)
+` create-conmux.sh -c`
+
+  See [lab-setup.md](../scripts/lab-setup/lab-setup.md)
 
 
 ## Initial LAVA Server Administration ##
