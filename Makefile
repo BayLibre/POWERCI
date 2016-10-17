@@ -1,5 +1,7 @@
 ## Default lab
-export LAB=lab-baylibre
+#export LAB=lab-baylibre 
+#export LAB=baylibre-nuc 
+export LAB=test-lava 
 
 ## Lab associated
 ifeq ($(LAB),lab-baylibre)
@@ -11,6 +13,12 @@ ifeq ($(LAB),baylibre-nuc)
   export LAVA_USER=lavademo
   export LAVA_SERVER_IP=baylibre-nuc.local
   export LAVA_TOKEN=1yynsllg58f5z77fp5l02a2w2y2bha3n0yfaxlabbbwmcrggqbpocowhwpr05k924xlt0fkmt1p3fl22e9qn09cbhciks2fowem0no0iwl5q0t1qp493w4mdee0h3djo
+else
+ifeq ($(LAB),test-lava)
+  export LAVA_USER=test-lava
+  export LAVA_SERVER_IP=testlava-server.local
+  export LAVA_TOKEN=j10qssg47jnjctju8t1jrz8fxpj0e1kutnmjsrz8btoj05k4gynj3j99e30gg09fm23aikygux4hatjue0ngtaw14d5s3wl4c106ellif150azfrq6m0acqsi08z0sdo
+endif
 endif
 endif
 
@@ -32,11 +40,11 @@ export ATTACHMENTS=/var/www/html/kernel-ci/attachments
 export WORKSPACE=$(TOPDIR)/SRC
 export BUNDLE_STREAM=/anonymous/$(LAVA_USER)/
 
+export TAG?=mainline/v4.6-rc7
+RESULTS_SUMMARY=lab-baylibre-$(subst /,_,$(TAG)).json
+
 ## Kernel tag to use
 #  See https://storage.kernelci.org for full list.
-export TAG?=mainline/v4.6-rc7
-
-RESULTS_SUMMARY=lab-baylibre-$(subst /,_,$(TAG)).json
 export RESULTS_PATH?=result
 
 export LAB_BAYLIBRE_TARGETS?=beaglebone-black panda-es

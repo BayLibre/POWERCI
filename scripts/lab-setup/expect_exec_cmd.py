@@ -469,7 +469,7 @@ def main():
                        help="keep logfile if already exist, remove it if not")
     parser.add_argument("-v", "--verbosity", action="store_true", dest='verbosity', default=False, 
                        help="verbosity level, default=0")
-    parser.add_argument("--version",         action="version", version='Version v0.1', 
+    parser.add_argument("--version",         action="version", version='expect_exec_cmd.py version: 0.2', 
                        help="print version")
     parser.add_argument("--reboot",          action="store_true", dest='reboot', default=False,
                        help="reboot host")

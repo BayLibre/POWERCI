@@ -5,14 +5,22 @@
 see the scripts located under :
 > POWERCI/scripts/lab-setup
 
-## Setup Conmux ##
+## Setup serial/ssh access ##
 
+Serial access is done via conmux, a console access multiplexor. This is a telnet like tool but it permit multiple accesses to device at same time.
+
+more information on conmux: <http://autotest.readthedocs.io/en/latest/main/remote/Conmux-OriginalDocumentation.html>
+
+The pre-requisite element is a device-type config in lava-dispatcher/device-types
 As per <http://127.0.1.1/static/docs/known-devices.html>
 
-Check that the device-type exists in lava-dispatcher/device-types
+To setup the serial/ssh access with the needed config file automatically created, just launch 
+```
+$ create-conmux.sh -c
+```
+-c option will clear the ttyUSB devices connected. It will ask you to unplug every ttyUSB before processing.
 
-Launch the script create-conmux.sh and answer to the questions.
-After that, you should have:
+After a while and some question, if process end successfully, you should have:
 
   * [your board].conf under /etc/lava-dispatcher/devices/
   * [your board].cf under /etc/conmux/
@@ -28,16 +36,22 @@ acme baylibre-nuc.local:41622
 am335x-boneblack baylibre-nuc.local:37067
 ```
 
-  * check connection to acme and [your board]:
+  * check connection to acme and dut:
 
 ```
 $ conmux-console --status acme
 connected
 ```
+
 ```
 $ conmux-console --status am335x-boneblack
 connected
 ```
+
+  * SSH connection done from lab, acme and dut
+
+
+Here are some usage of create-conmux.sh
 
 create-conmux.sh usage:
 ```
@@ -56,13 +70,30 @@ usage: create-conmux.sh [OPTION]
 conmux current status
 ```
 $ ./create-conmux.sh --status
-USB devices connected (2):
-/dev/ttyUSB2
-/dev/ttyUSB3
+USB and devices connected (2):
+  /dev/ttyUSB0    acme
+  /dev/ttyUSB1    am335x-boneblack
 
-Boards connected to ttyUSB (2)
-  acme attached to ttyUSB2
-  am335x-boneblack attached to ttyUSB3
+Check if conmux config is started for each devices
+[sudo] password for test-lava: 
+  acme:              status=connected     started=YES  config_file=/etc/conmux/acme.cf              pid=17612  TCP=*:33910(LISTEN)
+  am335x-boneblack:  status=disconnected  started=YES  config_file=/etc/conmux/am335x-boneblack.cf  pid=17615  TCP=*:35183(LISTEN)
+
+ACME Probe connected:
+  Probe_1
+  Probe_2
+
+Devices address found:
+acme:  root@baylibre-acme-lab  IP=192.168.1.38
+acme:              root@baylibre-acme-lab  IP=192.168.1.38
+am335x-boneblack:  None                    IP=None
+
+SSH status:
+* LAB testlava-server to ACME (acme):
+  baylibre-acme-lab        not     pingable
+  baylibre-acme-lab.local  OK
+  192.168.1.38             OK
+* LAB testlava-server to DUT (am335x-boneblack): FAIL
 ```
 
 remove a board, and add a new one:
@@ -150,41 +181,77 @@ NAME              TYPE              TTY      ACME_PORT  BAUD_RATE  ADDR         
 acme              beaglebone-black  ttyUSB0  -          115200     root@baylibre-acme-lab  192.168.1.38
 am335x-boneblack  beaglebone-black  ttyUSB1  1          115200     root@am335x-boneblack   192.168.1.59
 
-Create SSH connection between lab(baylibre-nuc), acme and dut
-    Copy baylibre-nuc public key to baylibre-acme-lab
-    => Check if baylibre-acme-lab is pingable
-    => Check ssh connection from baylibre-nuc to 192.168.1.38 already exist
-    => Copy /home/lavademo/.ssh/id_rsa.pub key via 'ssh' to 'root@baylibre-acme-lab.local'
-    => Check ssh connection from baylibre-nuc to baylibre-acme-lab after key copy
-    Done copy baylibre-nuc public key to baylibre-acme-lab
-    Copy baylibre-nuc public key to am335x-boneblack
-    => Check if am335x-boneblack is pingable
-    => Check ssh connection from baylibre-nuc to 192.168.1.59 already exist
-    => Copy /home/lavademo/.ssh/id_rsa.pub key via 'ssh' to 'root@am335x-boneblack'
-    => Check ssh connection from baylibre-nuc to am335x-boneblack after key copy
-    Done copy baylibre-nuc public key to am335x-boneblack
+Create SSH connection between lab(testlava-server), acme and dut
+    Copy testlava-server public key to baylibre-acme-lab
+    => Check ssh connection from testlava-server to baylibre-acme-lab
+Check ssh connection to:
+ - baylibre-acme-lab => not pingable
+ - baylibre-acme-lab.local => OK
+ - 192.168.1.38 => OK
+    => Copy local /home/test-lava/.ssh/id_rsa.pub key via 'ssh' to root@192.168.1.38
+id_rsa.pub                                                                                      100%  407     0.4KB/s   00:00    
+    => Check if baylibre-acme-lab (192.168.1.38) is restarted
+.
+    => Check ssh connection from testlava-server to baylibre-acme-lab after key copy
+Check ssh connection to:
+ - baylibre-acme-lab => not pingable
+ - baylibre-acme-lab.local => OK
+ - 192.168.1.38 => OK
+    Done copy testlava-server public key to baylibre-acme-lab
+    Copy testlava-server public key to am335x-boneblack
+    => Check ssh connection from testlava-server to am335x-boneblack
+Check ssh connection to:
+ - am335x-boneblack => not pingable
+ - am335x-boneblack.local => not pingable
+ - 192.168.1.59 => not pingable
+    => Copy local /home/test-lava/.ssh/id_rsa.pub key via 'conmux-console' to am335x-boneblack
+    => Check if am335x-boneblack (192.168.1.59) is restarted
+.
+    => Check ssh connection from testlava-server to am335x-boneblack after key copy
+Check ssh connection to:
+ - am335x-boneblack => OK
+ - am335x-boneblack.local => OK
+ - 192.168.1.59 => OK
+    Done copy testlava-server public key to am335x-boneblack
     Copy am335x-boneblack public key to acme
-    => Check and Create pub key of am335x-boneblack
-    => Get pub key from am335x-boneblack
-id_rsa.pub                                                                              100%  403     0.4KB/s   00:00    
-    => Copy pub key onto acme
-    => Check if baylibre-acme-lab is pingable
-    => Check ssh connection from baylibre-nuc to 192.168.1.38 already exist
-    => Copy am335x-boneblack_id_rsa.pub key via 'ssh' to 'root@baylibre-acme-lab.local'
-    => Check ssh connection from baylibre-nuc to baylibre-acme-lab after key copy
-expect_exec_cmd.py                                                                      100%   15KB  14.5KB/s   00:00    
-    => Check ssh connection from am335x-boneblack to acme
-    Done copy am335x-boneblack public key to baylibre-acme-lab
-
+    => Check ssh connection from testlava-server to am335x-boneblack
+Check ssh connection to:
+ - am335x-boneblack => OK
+ - am335x-boneblack.local => OK
+ - 192.168.1.59 => OK
+    => Check ssh connection from testlava-server to baylibre-acme-lab
+Check ssh connection to:
+ - baylibre-acme-lab => not pingable
+ - baylibre-acme-lab.local => OK
+ - 192.168.1.38 => OK
+    => Copy .ssh/id_rsa.pub key via 'ssh' to 'root@192.168.1.38'
+id_rsa.pub                                                                                      100%  403     0.4KB/s   00:00    
+root@192.168.1.59_id_rsa.pub                                                                    100%  403     0.4KB/s   00:00    
+    => Check if baylibre-acme-lab (192.168.1.38) is restarted
+.
+    => Check if am335x-boneblack (192.168.1.59) is restarted
+.....
+    => Check ssh connection from testlava-server to baylibre-acme-lab after key copy
+Check ssh connection to:
+ - baylibre-acme-lab => not pingable
+ - baylibre-acme-lab.local => OK
+ - 192.168.1.38 => OK
+    => Check ssh connection from testlava-server to am335x-boneblack after key copy
+Check ssh connection to:
+ - am335x-boneblack => OK
+ - am335x-boneblack.local => OK
+ - 192.168.1.59 => OK
+    => Check ssh connection from am335x-boneblack to baylibre-acme-lab after key copy
+check-ssh.sh                                                                                    100% 2176     2.1KB/s   00:00    
+    Done copy testlava-server public key to am335x-boneblack
 Cleaning /etc/lava-dispatcher/devices
 Create ACME conmux config
 Create conmux conf of am335x-boneblack
 conmux stop/waiting
-conmux start/running, process 21048
+conmux start/running, process 26460
 Create lava conf of am335x-boneblack
 Installed 2 object(s) from 1 fixture(s)
 if acme is integrated into pdudaemon, then setup lavapdu.conf with 'pdu' as acme type
-
 ```
 
 

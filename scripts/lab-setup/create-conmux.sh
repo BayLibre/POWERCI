@@ -4,6 +4,8 @@ set -o errtrace
 #set -o nounset #Error if variable not set before use  
 #set -o errexit #Exit for any error found... 
 
+VERSION="0.3"
+
 
 ###################################################################################
 ## 
@@ -39,7 +41,9 @@ parse_args()
             -h|--help)
                 usage; exit 0; shift;;
             --version)
-                echo "Version: $VERSION"; exit 0; shift;;
+                echo "create-conmux.sh version: $VERSION"; 
+                ./create-boards-conf.sh --version
+                exit 0; shift;;
             -v)
                 DEBUG_LVL=$((${DEBUG_LVL}+1))
                 if [ $DEBUG_LVL -ge 2 ]; then set -x; fi
@@ -98,6 +102,21 @@ get_status()
     echo_debug "START get_status"
     get_connected_devices
     
+    if [ "`which conmux-console`" != "" ]; then
+        CONMUX_CONNECTED=""
+        check_conmux_config
+
+        #Get Address and ssh status of each devices at least connected via conmux
+        #echo ${CONMUX_CONNECTED}
+        if [ ${DEBUG_LVL} -eq 1 ]; then   DEBUG_OPTION="-v"
+        elif [ ${DEBUG_LVL} -eq 2 ]; then DEBUG_OPTION="-vv"
+        else                              DEBUG_OPTION=""
+        fi
+
+        echo_debug "CALL ./create-boards-conf.sh ${DEBUG_OPTION} --logfile ${LOGFILE} --status --device ${DEVICE_LIST// /,}"
+        ./create-boards-conf.sh ${DEBUG_OPTION} --logfile ${LOGFILE} --status --device ${DEVICE_LIST// /,}
+    fi
+
     echo_debug "END get_status"
 }
 
@@ -362,25 +381,31 @@ get_connected_devices()
     #ttyUSB=`ls -1 /dev/ | grep 'ttyUSB'`
     ttyUSB_connected=`ls -1 /dev/tty* | grep ttyUSB`
     nb_ttyUSB=`echo "${ttyUSB_connected}" | wc -w`
-    echo_log "USB devices connected (${nb_ttyUSB}):"
+    echo_log "USB and devices connected (${nb_ttyUSB}):"
     if [ -z "${ttyUSB_connected}" ]; then 
         echo_error "None"
-    else                        
-        echo_info "${ttyUSB_connected}"
+    #else                        
+    #    echo_info "${ttyUSB_connected}"
     fi
 
 
-    echo ""
+    #echo ""
     device_ttys=`ls -l /dev/ | grep ttyUSB | grep " -> " | awk '{ print $9 ":" $11 }'`
     nb_devices=`echo $device_ttys | wc -w`
-    echo_log "Boards connected to ttyUSB (${nb_devices})"
-    if [ -z "$device_ttys" ]; then echo_error "None"
+    #echo_log "Boards connected to ttyUSB (${nb_devices})"
+    if [ -z "$device_ttys" ]; then 
+        for t in ${ttyUSB_connected}; do
+            echo_error "  $t    No device"
+            echo_error "  $t    No device"
+        done
+
     else
         for d in ${device_ttys}; do
             device=`echo $d | cut -d: -f1`
             tty=$(basename `echo $d | cut -d: -f2`)
             kernel=`dmesg | grep "now attached to $tty" | tail -1 | cut -d: -f1 | awk '{ print $NF }'`
-            echo_info "  $device attached to $tty"
+
+            #echo_info "  $device attached to $tty"
 
             baud=""
             if [ -f /etc/conmux/${device}.cf ]; then
@@ -389,6 +414,20 @@ get_connected_devices()
             
             if [  -z "${DEVICE_LIST}" ]; then DEVICE_LIST="$device:$tty:$kernel:$baud"
             else                              DEVICE_LIST="${DEVICE_LIST} $device:$tty:$kernel:$baud"
+            fi
+        done
+        
+        for t in ${ttyUSB_connected}; do
+            tty=$(basename $t)
+            if [ -z "`echo ${DEVICE_LIST} | grep $tty`" ]; then
+                echo_error "  $t    No device"
+            else
+                for d in ${DEVICE_LIST}; do
+                    if [ ! -z "`echo ${d} | grep $tty`" ]; then
+                        echo_info "  $t    `echo $d | cut -d\: -f1`"
+                        break
+                    fi
+                done
             fi
         done
     fi
@@ -484,22 +523,31 @@ application console '${device} console' 'exec sg dialout \"/usr/local/bin/cu-loo
 ###################################################################################
 check_conmux_config()
 {
+    echo_log ""
     echo_log "Check if conmux config is started for each devices"
+    echo "" > tmp.tmp
+    CONMUX_CONNECTED=""
     config_error="no"
     for d in ${DEVICE_LIST}; do
         device=`echo $d | awk -F":" '{ print $1 }'`
-
+        status=`conmux-console --status $device`
         pid=`ps -aux | grep /usr/sbin/conmux | grep /etc/conmux/${device}.cf | awk '{ print $2 }'`
         if [ -z "$pid" ]; then
-            echo_error "no: conmux not started for /etc/conmux/${device}"
+            echo_error "  $device: status=$status started=NO config_file=/etc/conmux/${device}" >> tmp.tmp
             config_error="yes"
         else
             tcp_port=`sudo lsof -i | grep conmux | grep $pid | awk -F"TCP" '{ print $2 }'`
+            if [ "$status" != "connected" ]; then
+                echo_warning "  $device: status=$status started=YES config_file=/etc/conmux/${device}.cf pid=${pid} TCP=${tcp_port// /}"  >> tmp.tmp
+            else
+                echo_info "  $device: status=$status started=YES config_file=/etc/conmux/${device}.cf pid=${pid} TCP=${tcp_port// /}"  >> tmp.tmp
 
-            echo_info "yes: conmux started /etc/conmux/${device}.cf pid=${pid} TCP=${tcp_port}"
+                CONMUX_CONNECTED="${CONMUX_CONNECTED} $d"
+            fi
+            
         fi
     done
-    
+    cat tmp.tmp | column -t
 }
 
 ###################################################################################
@@ -594,8 +642,6 @@ trapErr()
 create_conmux()
 ###################################################################################
 {
-    VERSION="0.2"
-
     LOGFILE="create-conmux.log"
     DEBUG_EN="no"
     DEBUG_LVL=0
@@ -641,6 +687,10 @@ create_conmux()
 
 
     #check if cu-loop is in /usr/local/bin, copy it instead
+    if [ "`which cu`" == "" ];then
+        echo_warning "CU is not yet installed. installation will start now."
+        sudo apt-get install cu
+    fi
     if [ ! -f /usr/local/bin/cu-loop ];then
         echo_debug "copy cu-loop to /usr/local/bin"
         sudo cp -f cu-loop /usr/local/bin/.

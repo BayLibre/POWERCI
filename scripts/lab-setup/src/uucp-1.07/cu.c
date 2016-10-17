@@ -853,6 +853,7 @@ ucuhelp ()
   printf (" -E,--escape char: Set escape character\n");
   printf (" -h,--halfduplex: Echo locally\n");
   printf (" --nostop: Turn off XON/XOFF handling\n");
+  printf (" --nortscts: Disable Flow control mode\n");
   printf (" -t,--mapcr: Map carriage return to carriage return/linefeed\n");
   printf (" -n,--prompt: Prompt for phone number\n");
   printf (" -d: Set maximum debugging level\n");
