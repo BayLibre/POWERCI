@@ -46,32 +46,58 @@ The script will ask you some detail during the run
 
 Mainly, it will:
 * get and add repo from http://images.validation.linaro.org/trusty-repo/trusty-repo.key.asc
+
 * install lava "full set"
+
   => This might need an interactive installation withou following detail
-  standalone server
-  Name "lab-baylibre"
-  Postgres port 5432
-  internet site config for email
-  fully qualified domain name: baylibre.com
+
+`  standalone server
+
+`  Name "lab-baylibre"
+
+`  Postgres port 5432
+
+`  internet site config for email
+
+`  fully qualified domain name: baylibre.com
+
 * Create symlink from /home/$USER/POWERCI/SRC/lava-dispatcher/lava_dispatcher -> /usr/lib/python2.7/dist-packages/lava_dispatcher
+
   The power measurement hooks are currently located in a baylibre github branch.
+
   This branch is pulled by the manifest to SRC/lava-dispatcher. 
+
   It can be used in place of the python packages installed by the debian package.
+
 * Create following symlink for fs-overlay
-/etc/lava-dispatcher/devices -> /home/lavademo/POWERCI/fs-overlay/etc/lava-dispatcher/devices
-/etc/lava-dispatcher/device-types -> /home/lavademo/POWERCI/fs-overlay/etc/lava-dispatcher/device-types
-/etc/lava-dispatcher/lava-dispatcher.conf -> /home/$USER/POWERCI/fs-overlay/etc/lava-dispatcher/lava-dispatcher.conf
+
+`/etc/lava-dispatcher/devices -> /home/lavademo/POWERCI/fs-overlay/etc/lava-dispatcher/devices
+
+`/etc/lava-dispatcher/device-types -> /home/lavademo/POWERCI/fs-overlay/etc/lava-dispatcher/device-types
+
+`/etc/lava-dispatcher/lava-dispatcher.conf -> /home/$USER/POWERCI/fs-overlay/etc/lava-dispatcher/lava-dispatcher.conf
+
 * Check config file such as
-  /etc/lava-server/settings.conf
-  /etc/apache2/sites-available/powerci.conf
-  /etc/lava-dispatcher/device-types/*
+
+`  /etc/lava-server/settings.conf
+
+`  /etc/apache2/sites-available/powerci.conf
+
+`  /etc/lava-dispatcher/device-types/*
+
 * Setup Apache
+
   Enable site conf lava-server.conf instead of default
+
   restart apache
+
 * Create a superuser account for lava-server
+
   Note that for debug only, it is recommended to settings the log level for the server
 to 'debug', in file /etc/init.d/lava-server
+
 * Launch a script that will setup serial and ssh connection, and create needed config file for acme and DUT
+
   See [setup-lab.md](setup-lab.md)
 
 
