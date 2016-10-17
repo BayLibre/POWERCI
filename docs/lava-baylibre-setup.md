@@ -51,15 +51,15 @@ Mainly, it will:
 
   => This might need an interactive installation withou following detail
 
-`  standalone server
+`  standalone server`
 
-`  Name "lab-baylibre"
+`  Name "lab-baylibre"`
 
-`  Postgres port 5432
+`  Postgres port 5432`
 
-`  internet site config for email
+`  internet site config for email`
 
-`  fully qualified domain name: baylibre.com
+`  fully qualified domain name: baylibre.com`
 
 * Create symlink from /home/$USER/POWERCI/SRC/lava-dispatcher/lava_dispatcher -> /usr/lib/python2.7/dist-packages/lava_dispatcher
 
@@ -71,19 +71,19 @@ Mainly, it will:
 
 * Create following symlink for fs-overlay
 
-`/etc/lava-dispatcher/devices -> /home/lavademo/POWERCI/fs-overlay/etc/lava-dispatcher/devices
+`/etc/lava-dispatcher/devices -> /home/lavademo/POWERCI/fs-overlay/etc/lava-dispatcher/devices`
 
-`/etc/lava-dispatcher/device-types -> /home/lavademo/POWERCI/fs-overlay/etc/lava-dispatcher/device-types
+`/etc/lava-dispatcher/device-types -> /home/lavademo/POWERCI/fs-overlay/etc/lava-dispatcher/device-types`
 
-`/etc/lava-dispatcher/lava-dispatcher.conf -> /home/$USER/POWERCI/fs-overlay/etc/lava-dispatcher/lava-dispatcher.conf
+`/etc/lava-dispatcher/lava-dispatcher.conf -> /home/$USER/POWERCI/fs-overlay/etc/lava-dispatcher/lava-dispatcher.conf`
 
 * Check config file such as
 
-`  /etc/lava-server/settings.conf
+`  /etc/lava-server/settings.conf`
 
-`  /etc/apache2/sites-available/powerci.conf
+`  /etc/apache2/sites-available/powerci.conf`
 
-`  /etc/lava-dispatcher/device-types/*
+`  /etc/lava-dispatcher/device-types/*`
 
 * Setup Apache
 
