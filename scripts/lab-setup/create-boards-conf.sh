@@ -310,6 +310,7 @@ EOF
     fi
 
     cat tmp.tmp | column -t
+    sudo rm -f tmp.tmp
 }
 
 ###################################################################################
@@ -322,6 +323,7 @@ board_addr()
     echo_debug "START board_addr $1"
 
     board=$1
+    echo_log "Get board address of $board"
     get_board_addr $board
     if [ "${!BOARD_ADDR_NAME}" == "None" ]; then
         while true; do
@@ -336,54 +338,19 @@ board_addr()
         echo_question -o "-n" "Is it Correct? (Y|n): "
         read resp
 
-    #board_addr_name="`echo ${board//-/_} | sed 's/./\U&/g'`_ADDR"
-    #board_ip_name="`echo ${board//-/_} | sed 's/./\U&/g'`_IP"
+        if [ "$resp" == "n" ];then
+            while true; do
+                echo_question -o "-n" "Please enter your new address for ${board}: "
+                read addr
+                eval ${BOARD_ADDR_NAME}="${addr}"
+                echo_debug "${BOARD_ADDR_NAME} = ${!BOARD_ADDR_NAME}"
+                if [ ! -z `echo ${!BOARD_ADDR_NAME}` ];then break; fi
+            done
 
+            newaddr=`echo ${!BOARD_ADDR_NAME} | cut -d@ -f2`
 
-    #echo_debug "board_addr_name = ${board_addr_name}"
-
-    #if [ -z "`printenv | grep ${board_addr_name}`" ];then
-    #    echo_log "Get address of ${board}"
-
-#cat << EOF > commands.cmd
-#ls
-#whoami
-#uname -n
-#ifconfig eth0 | grep 'inet addr' | sed 's/\s\+/ /g' | cut -d: -f2 | cut -d' ' -f1
-#EOF
-
-    #    expect_exec_cmd "conmux-console" "${board}" "commands.cmd"
-    #    rc=$?
- 
-    #    if [ $rc -eq 0 ]; then
-    #        echo_debug "`cat commands.res`"
-    #        addr=$(cat commands.res | sed -e '1,/command: uname/d' -e '/rc/,$d' -e 's/response: //')
-    #        user=$(cat commands.res | sed -e '1,/command: whoami/d' -e '/rc/,$d' -e 's/response: //')
-    #        ip=$(cat commands.res | sed -e '1,/command: ifconfig/d' -e '/rc/,$d' -e 's/response: //')
-
-    #        eval ${board_addr_name}="${user}@${addr}"
-    #        echo_debug "${board_addr_name} = ${!board_addr_name}"
-    #        eval ${board_ip_name}="${ip}"
-    #        echo_debug "${board_ip_name} = ${!board_ip_name}"
-
-    #        echo_log "Address read in ${board} is set to:"
-    #        echo_info "${!board_addr_name} (${!board_ip_name})"
-    #        echo_question -o "-n" "Correct? (Y|n): "
-    #        read resp
-
-            if [ "$resp" == "n" ];then
-                while true; do
-                    echo_question -o "-n" "Please enter your new address for ${board}: "
-                    read addr
-                    eval ${BOARD_ADDR_NAME}="${addr}"
-                    echo_debug "${BOARD_ADDR_NAME} = ${!BOARD_ADDR_NAME}"
-                    if [ ! -z `echo ${!BOARD_ADDR_NAME}` ];then break; fi
-                done
-
-                newaddr=`echo ${!BOARD_ADDR_NAME} | cut -d@ -f2`
-
-                echo_log "Change address of ${board}"
-cat << EOF > commands.cmd
+            echo_log "Change address of ${board}"
+            cat << EOF > commands.cmd
 echo $newaddr > /etc/hostname
 cat /etc/hosts | sed -e "s/127.0.1.1\t.*/127.0.1.1\t$newaddr/g" > /etc/hosts.new 
 mv -f /etc/hosts.new /etc/hosts
@@ -391,33 +358,24 @@ hostname -F /etc/hostname
 uname -n
 EOF
 
-                expect_exec_cmd "conmux-console" "${board}" "commands.cmd"
-                rc=$?
+            expect_exec_cmd "conmux-console" "${board}" "commands.cmd"
+            rc=$?
 
-                if [ $rc -eq 0 ]; then
-                    echo_debug "`cat commands.res`"
-                    newaddrchg=$(cat commands.res | sed -e '1,/command: uname/d' -e '/rc/,$d' -e 's/response: //')
-                    eval ${BOARD_ADDR_NAME}="${user}@${newaddrchg}"
-                    echo_log "${board} address is changed to:"
-                    echo_info "${!BOARD_ADDR_NAME}"
-                else
-                    echo_warning "### WARNING ### ${board} address is not changed !"
-                fi
-
-                echo_debug "expect_exec_reboot \"conmux-console\" \"${board}\""
-                expect_exec_reboot "conmux-console" "${board}"
-
+            if [ $rc -eq 0 ]; then
+                echo_debug "`cat commands.res`"
+                newaddrchg=$(cat commands.res | sed -e '1,/command: uname/d' -e '/rc/,$d' -e 's/response: //')
+                eval ${BOARD_ADDR_NAME}="${user}@${newaddrchg}"
+                echo_log "${board} address is changed to:"
+                echo_info "${!BOARD_ADDR_NAME}"
+            else
+                echo_warning "### WARNING ### ${board} address is not changed !"
             fi
 
-    #    else
-    #        while true; do
-    #            echo_question -o "-n" "Please enter manually an address for ${board}: "
-    #            read addr
-    #            eval ${board_addr_name}="${addr}"
-    #            echo_debug "${board_addr_name} = ${!board_addr_name}"
-    #            if [ ! -z `echo ${!board_addr_name}` ];then break; fi
-    #        done
-    #    fi
+            echo_debug "expect_exec_reboot \"conmux-console\" \"${board}\""
+            expect_exec_reboot "conmux-console" "${board}"
+
+        fi
+
     fi
 
     if [ ! -f /etc/profile.d/lava_lab.sh ]; then
@@ -480,38 +438,17 @@ board_list()
 
     #create the list of device_type
     buffer=""
-    for dt in `ls /etc/lava-dispatcher/device-types/*.conf | awk -F/ '{ print $NF }'`; do
+    for dt in `ls /etc/lava-dispatcher/device-types/*.conf | awk -F/ '{ print $NF }'` `ls ~/POWERCI/SRC/lava-dispatcher/lava_dispatcher/default-config/lava-dispatcher/device-types/*.conf | awk -F/ '{ print $NF }'`; do
         if [ -z "$buffer" ]; then buffer="${dt//.conf/}"
-        else                      buffer="$buffer,${dt//.conf/}"
+        else
+            if [ -z "`echo $buffer | grep ${dt//.conf/}`" ]; then                      
+                buffer="$buffer,${dt//.conf/}"
+            fi
         fi
     done
 
     #list of acme port available
     get_acme_probe
-    #acme_possible_port="None"
-#cat << EOF > commands.cmd
-#dut-dump-probe 0
-#dut-dump-probe 1
-#dut-dump-probe 2
-#dut-dump-probe 3
-#dut-dump-probe 4
-#dut-dump-probe 5
-#dut-dump-probe 6
-#dut-dump-probe 7
-#EOF
-    #expect_exec_cmd "conmux-console" "acme" "commands.cmd"
-    #rc=$?
-
-    #if [ $rc -eq 0 ]; then
-    #    acme_possible_port=""
-    #    for p in 0 1 2 3 4 5 6 7; do
-    #        avail=`cat commands.res | grep -A1 "dut-dump-probe $p" | grep "response:" | cut -d\: -f2`
-    #        if [ "`echo $avail | grep \"Could not open\"`" == "" ]; then
-    #            acme_possible_port="${acme_possible_port} Probe_$((p+1))"
-    #        fi
-    #    done
-    #    acme_possible_port=`echo ${acme_possible_port}| sed -e 's/^[ \t]*//' -e 's/*[ \t]$//'`
-    #fi
     acme_possible_port=${ACME_PROBE}
 
     echo "NAME TYPE TTY ACME_PORT BAUD_RATE ADDR IP" > /tmp/lava_board

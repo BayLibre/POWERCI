@@ -548,6 +548,7 @@ check_conmux_config()
         fi
     done
     cat tmp.tmp | column -t
+    sudo rm -f tmp.tmp
 }
 
 ###################################################################################
