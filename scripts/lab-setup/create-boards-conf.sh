@@ -925,7 +925,7 @@ command 'on' 'Power on ${board}' 'ssh ${ACME_ADDR} dut-switch-on ${port}'""" >> 
         debug_option=""
         if [ "$DEBUG_EN" == "yes" ]; then debug_option="-v"; fi
         echo_debug "CALL sudo python ./add_baylibre_device.py ${debug_option} -l $LOGFILE  -p ${port} -a \"$ACME_ADDR\" -b ${type} ${board} "
-        sudo python ./add_baylibre_device.py ${debug_option} -l $LOGFILE -p ${port} -a "ssh -t $ACME_ADDR" -b ${type} ${board} 
+        sudo python ./add_baylibre_device.py ${debug_option} -l $LOGFILE -p ${port} -a "$ACME_ADDR" -b ${type} ${board} 
 
         if [ -z `cat /etc/lava-dispatcher/devices/${board}.conf | grep hard_reset_command` ]; then
             echo_debug "file /etc/lava-dispatcher/devices/${board}.conf: Add hard_reset_command = ssh -t $ACME_ADDR dut-hard-reset ${port}"

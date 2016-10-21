@@ -25,7 +25,7 @@ lab_install()
     if [ -d lava_dispatcher ]; then sudo rm -rf lava_dispatcher; fi
     sudo ln -fs /home/$USER/POWERCI/SRC/lava-dispatcher/lava_dispatcher lava_dispatcher
 
-    echo "fs-overlay config" 
+    echo "link fs-overlay/etc stuff to /etc" 
     if [ -d /etc/lava-dispatcher/devices ]; then sudo rm -rf /etc/lava-dispatcher/devices; fi
     sudo ln -fs /home/$USER/POWERCI/fs-overlay/etc/lava-dispatcher/devices /etc/lava-dispatcher/devices
     if [ -d /etc/lava-dispatcher/device-types ]; then sudo rm -rf /etc/lava-dispatcher/device-types; fi

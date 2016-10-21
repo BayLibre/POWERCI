@@ -530,7 +530,7 @@ check_conmux_config()
     config_error="no"
     for d in ${DEVICE_LIST}; do
         device=`echo $d | awk -F":" '{ print $1 }'`
-        status=`conmux-console --status $device`
+        status=`wait_conmux_status "$device" "connected" | tr -d '[[:space:]]'`
         pid=`ps -aux | grep /usr/sbin/conmux | grep /etc/conmux/${device}.cf | awk '{ print $2 }'`
         if [ -z "$pid" ]; then
             echo_error "  $device: status=$status started=NO config_file=/etc/conmux/${device}" >> tmp.tmp
@@ -551,6 +551,32 @@ check_conmux_config()
     sudo rm -f tmp.tmp
 }
 
+###################################################################################
+## 
+###################################################################################
+wait_conmux_status()
+{
+    echo_log ""
+    device=$1
+    status_expected=$2
+    timeout=60
+    start=`date +%s`
+    reach="false"
+    while [ `date +%s` -lt $((start+timeout)) ]; do
+        status_current=`conmux-console --status $device`
+        if [ "${status_current}" == "${status_expected}" ]; then
+            duration=$((`date +%s`-start))
+            echo "$status_current"
+            reach="true"
+            break
+        fi
+        sleep 1
+    done
+    if [ "reach" == "false" ]; then
+        echo "$status_current"
+        return 1
+    fi
+}
 ###################################################################################
 ## 
 ###################################################################################
@@ -697,12 +723,20 @@ create_conmux()
         sudo cp -f cu-loop /usr/local/bin/.
     fi
 
+    sudo chmod -R 775 /usr/spool
+
     #then restart conmux
     echo_debug "restart conmux service"
     sudo stop conmux
     sleep 1
     sudo start conmux
     sleep 2
+
+    #check conmux starts well
+    if [ -z "`ps -ef | grep conmux | grep -v grep`" ] || [ -z "`ps aux | grep "/bin/cu " | grep -v grep`" ]; then
+        echo_error "Conmux did not starts successfully"
+        exit 1
+    fi
 
     #check conmux config
     check_conmux_config
