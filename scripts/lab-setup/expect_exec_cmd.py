@@ -109,7 +109,9 @@ class expect_generic:
             cmd=A_cmds[idx]['command']
             logging.info("command: %s" % cmd)
 
-            self.p.sendline(cmd)
+            #self.p.sendline(cmd)
+            self.sendline(cmd)
+
             logging.debug("call expect")
             if len(self.prompt+' '+cmd)>79:
                 val=len(self.prompt+' '+cmd) // 80
@@ -127,7 +129,8 @@ class expect_generic:
             A_cmds[idx]['response']=res
 
             logging.debug("send 'echo $?' to get command return code")
-            self.p.sendline("echo $?")
+            #self.p.sendline("echo $?")
+            self.sendline("echo $?")
             i=self.expect(["echo \$\?"+self.newline+"([0-9]*)"+self.newline+self.prompt])
             rc=self.p.match.group(1).lstrip().rstrip()
             logging.debug("command return code: "+str(rc))
@@ -158,7 +161,8 @@ class expect_generic:
 
         #import ping, socket
         logging.info('Reboot')
-        self.p.sendline('reboot')
+        #self.p.sendline('reboot')
+        self.sendline('reboot')
 
         time.sleep(10)
 
@@ -189,26 +193,12 @@ class expect_generic:
 
 
         time.sleep(5)
-        #check host is ready to accept commands
-        #ready=False
-        #start=time.time()
-        #while time.time()-start < 60:
-        #    try:
-        #        self.p.sendline("\r")
-        #        if self.expect(["login: "]) == 0:
-        #            logging.debug(" => login: received")
-        #            logging.info('Need login info')
-        #            ready=True
-        #            break
-        #    except expectError, err:
-        #        if expectError.TIMEOUT in str(err): pass
-        #        else: raise expectError(str(err))
-
-        #if not ready:
-        #    logging.error("### ERROR ### %s Not restarted after 60sec" % self.toaccess)
-        #    print "### ERROR ### %s Not restarted after 60sec" % self.toaccess
-        #    logging.debug("reboot: exit 1")
-        #    raise expectError(expectError.REBOOT % (self.toaccess, 60))
+        
+    def sendline(self,string=""):
+        for s in string:
+            self.p.send(s)
+            time.sleep(0.001)
+        self.p.sendline('')
             
         
         
@@ -222,17 +212,20 @@ class expect_serial(expect_generic):
         time.sleep(1)
 
         logging.debug("Send \r, expect 'login:' or prompt")
-        self.p.sendline("\r")
+        #self.p.sendline("\r")
+        self.sendline("")
         if self.expect(["login: ",self.prompt]) == 0:
             logging.debug(" => login: received")
             logging.info('Need login info')
 
             logging.debug("Send login(%s), expect 'Password:' or prompt" % self.login)
-            self.p.sendline(self.login)
+            #self.p.sendline(self.login)
+            self.sendline(self.login)
             if self.expect(["Password: ",self.prompt]) == 0:
                 logging.debug(" => 'Password:' received")
                 logging.debug("Send password, expect 'Login incorrect' or prompt")
-                self.p.sendline(self.passwd)
+                #self.p.sendline(self.passwd)
+                self.sendline(self.passwd)
                 if self.expect(["Login incorrect",self.prompt])==0:
                     logging.error("### ERROR ### Login incorrect")
                     print "### ERROR ### Login incorrect"
@@ -249,7 +242,8 @@ class expect_serial(expect_generic):
             logging.debug(" => prompt received")
             logging.debug(" => wait for commands")
 
-        self.p.sendline("\r")
+        #self.p.sendline("\r")
+        self.sendline("")
         res = self.expect([self.newline+"# ",self.newline+"(.*)# "])
         if res == 1:
             elems=self.p.match.group(1).split(self.newline)
@@ -257,7 +251,8 @@ class expect_serial(expect_generic):
 
     def disconnect(self):
         logging.info('Exit')
-        self.p.sendline("exit")
+        #self.p.sendline("exit")
+        self.sendline("exit")
         logging.debug("expect 'login:' before exit with success ")
         i=self.expect(["login: "])
 
@@ -316,7 +311,8 @@ class expect_ssh(expect_generic):
             raise expectError(expectError.UNKNOWN_NAME % self.p.match.group(1))
 
         elif i == 1:
-            self.p.sendline("yes")
+            #self.p.sendline("yes")
+            self.sendline("yes")
             j = self.expect(["Host key verification failed.","# "])
             if j == 0:
                 logging.error("### ERROR ### Host key verification failed")
@@ -329,8 +325,13 @@ class expect_ssh(expect_generic):
                 logging.debug(" => wait for commands")
         elif i == 2:
             while True:
-                if self.passwd: self.p.sendline(self.passwd)
-                else:        self.p.sendline("")
+                if self.passwd: 
+                    #self.p.sendline(self.passwd)
+                    self.sendline(self.passwd)
+                else:        
+                    #self.p.sendline("")
+                    self.sendline("")
+
                 j = self.expect(["Permission denied","password:","# "])
                 if j==0:
                     logging.error("### ERROR ### Permission denied, check if password is correct")
@@ -350,7 +351,8 @@ class expect_ssh(expect_generic):
             logging.debug(" => prompt received")
             logging.debug(" => wait for commands")
 
-        self.p.sendline("\r")
+        #self.p.sendline("\r")
+        self.sendline("")
         res = self.expect([self.newline+"# ",self.newline+"(.*)# "])
         if res == 1:
             elems=self.p.match.group(1).split(self.newline)
@@ -359,7 +361,8 @@ class expect_ssh(expect_generic):
 
     def disconnect(self):
         logging.info('Exit')
-        self.p.sendline("exit")
+        #self.p.sendline("exit")
+        self.sendline("exit")
         logging.debug("expect 'Connection to <addr> closed.' before exit with success ")
         i=self.expect(["Connection to (.*) closed."])
         logging.info(' => Done')
@@ -391,7 +394,8 @@ class expect_scp(expect_generic):
 
 
         elif i == 1:
-            self.p.sendline("yes")
+            #self.p.sendline("yes")
+            self.sendline("yes")
             j = self.expect(["Host key verification failed.","# "])
             if j == 0:
                 logging.error("### ERROR ### Host key verification failed")
@@ -405,16 +409,22 @@ class expect_scp(expect_generic):
 
         elif i == 2:
             if self.src_addr in self.p.group(1):
-                self.p.sendline(self.src_passwd)
+                #self.p.sendline(self.src_passwd)
+                self.sendline(self.src_passwd)
             elif self.dst_addr in self.p.group(1):
-                self.p.sendline(self.dst_passwd)
+                #self.p.sendline(self.dst_passwd)
+                self.sendline(self.dst_passwd)
 
             while True:
                 if self.src_addr in self.p.group(1): passwd = self.src_passwd
                 elif self.dst_addr in self.p.group(1): passwd = self.dst_passwd
 
-                if passwd: self.p.sendline(passwd)
-                else:      self.p.sendline("")
+                if passwd: 
+                    #self.p.sendline(passwd)
+                    self.sendline(passwd)
+                else:      
+                    #self.p.sendline("")
+                    self.sendline("")
 
                 j = self.expect(["Permission denied","%s(.*)'s password:","# "])
                 if j==0:
@@ -439,7 +449,8 @@ class expect_scp(expect_generic):
         time.sleep(1)
         self.p.setwinsize(1000,1000)
 
-        self.p.sendline("\r")
+        #self.p.sendline("\r")
+        self.sendline("")
         res = self.expect([self.newline+"#",self.newline+"(.*)# "])
         if res == 1:
             elems=self.p.match.group(1).split(self.newline)
