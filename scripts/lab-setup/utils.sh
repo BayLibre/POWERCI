@@ -292,19 +292,28 @@ exec_expect()
     local log="-l $LOGFILE --keeplog"
     local cnx_cmd="$1"
     local command_file="$2"
+    local option="$3"
+    
+    if [ "$command_file" != "-" ]; then
+        tmp_res=${command_file%.*}.res
 
-    tmp_res=${command_file%.*}.res
-    echo_debug "python expect_exec_cmd.py $debug $log ${cnx_cmd} $command_file > ${tmp_res} 2>&1"
-    echo_debug "with $command_file containing:"
-    echo_debug "`cat $command_file`"
-    python expect_exec_cmd.py $debug $log ${cnx_cmd} $command_file > ${tmp_res} 2>&1
+        echo_debug "python expect_exec_cmd.py $debug $log ${option} ${cnx_cmd} $command_file > ${tmp_res} 2>&1"
+        echo_debug "with $command_file containing:"
+        echo_debug "`cat $command_file`"
+        python expect_exec_cmd.py $debug $log ${option} ${cnx_cmd} $command_file > ${tmp_res} 2>&1
+    else
+        tmp_res=reboot.res
+
+        echo_debug "python expect_exec_cmd.py $debug $log ${option} ${cnx_cmd} > ${tmp_res} 2>&1"
+        python expect_exec_cmd.py $debug $log ${option} ${cnx_cmd} > ${tmp_res} 2>&1
+    fi
     rc=$?
 
     echo_debug " => rc = $rc"
     echo_debug " => result:"
     echo_debug "`cat ${tmp_res}`"
     if [ $rc -ne 0 ]; then
-        echo "### WARNING ### command execution fails" >> ${tmp_res}
+        echo "### WARNING ### expect_exec_cmd.py execution fails" >> ${tmp_res}
         ret_code=1
     else
         ret_code=0

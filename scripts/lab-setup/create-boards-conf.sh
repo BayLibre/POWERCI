@@ -168,6 +168,8 @@ expect_exec_cmd()
     local dest_addr="$2"
     local command_file="$3"
 
+    sleep 2
+
     tmp_res=${command_file%.*}.res
     echo_debug "python expect_exec_cmd.py $debug $log ${cnx_type} ${dest_addr} $command_file > ${tmp_res} 2>&1"
     echo_debug "with $command_file containing:"
@@ -196,38 +198,38 @@ expect_exec_cmd()
 }
 
 ###################################################################################
-expect_exec_reboot()
-{
-    echo_debug "expect_exec_reboot START"
-    local debug=`if [ "$DEBUG_EN" == "yes" ]; then echo "-v"; else echo ""; fi`
-    local log="-l $LOGFILE --keeplog"
-    local cnx_type="$1"
-    local dest_addr="$2"
+#expect_exec_reboot()
+#{
+#    echo_debug "expect_exec_reboot START"
+#    local debug=`if [ "$DEBUG_EN" == "yes" ]; then echo "-v"; else echo ""; fi`
+#    local log="-l $LOGFILE --keeplog"
+#    local cnx_type="$1"
+#    local dest_addr="$2"
 
-    tmp_res="reboot.res"
-    echo_debug "python expect_exec_cmd.py --reboot $debug $log ${cnx_type} ${dest_addr} \"\" > ${tmp_res} 2>&1"
-    python expect_exec_cmd.py --reboot $debug $log ${cnx_type} ${dest_addr} "" > ${tmp_res} 2>&1
-    rc=$?
+#    tmp_res="reboot.res"
+#    echo_debug "python expect_exec_cmd.py --reboot $debug $log ${cnx_type} ${dest_addr} \"\" > ${tmp_res} 2>&1"
+#    python expect_exec_cmd.py --reboot $debug $log ${cnx_type} ${dest_addr} "" > ${tmp_res} 2>&1
+#    rc=$?
 
-    echo_debug " => rc = $rc"
-    echo_debug " => result:"
-    echo_debug "`cat ${tmp_res}`"
-    if [ $rc -ne 0 ]; then
-        echo "### WARNING ### reboot fails" >> ${tmp_res}
-        #echo_warning "`cat ${tmp_res}`"
-        ret_code=1
-    else
-        ret_code=0
-    fi
-    if [ "`cat ${tmp_res} | grep '### ERROR ###'`" != "" ]; then
-        #echo_error "`cat ${tmp_res}`"
-        ret_code=1
-    fi
+#    echo_debug " => rc = $rc"
+#    echo_debug " => result:"
+#    echo_debug "`cat ${tmp_res}`"
+#    if [ $rc -ne 0 ]; then
+#        echo "### WARNING ### reboot fails" >> ${tmp_res}
+#        #echo_warning "`cat ${tmp_res}`"
+#        ret_code=1
+#    else
+#        ret_code=0
+#    fi
+#    if [ "`cat ${tmp_res} | grep '### ERROR ###'`" != "" ]; then
+#        #echo_error "`cat ${tmp_res}`"
+#        ret_code=1
+#    fi
 
-    echo_debug "expect_exec_reboot END"
-    return $ret_code
+#    echo_debug "expect_exec_reboot END"
+#    return $ret_code
 
-}
+#}
 
 ###################################################################################
 wait_board_restart()
@@ -267,11 +269,13 @@ get_board_addr()
     if [ -z "`printenv | grep ${BOARD_ADDR_NAME}`" ];then
 
 cat << EOF > commands.cmd
+test -e .ssh || mkdir -p .ssh
 ls
 whoami
 uname -n
 ifconfig eth0 | grep 'inet addr' | sed 's/\s\+/ /g' | cut -d: -f2 | cut -d' ' -f1
 EOF
+        echo_debug "exec_expect_serial \"${board}\" \"commands.cmd\""
         exec_expect_serial "${board}" "commands.cmd"
         #expect_exec_cmd "conmux-console" "${board}" "commands.cmd"
         rc=$?
@@ -357,6 +361,7 @@ mv -f /etc/hosts.new /etc/hosts
 hostname -F /etc/hostname
 uname -n
 EOF
+            echo_debug "exec_expect_serial \"${board}\" \"commands.cmd\""
             exec_expect_serial "${board}" "commands.cmd"
             #expect_exec_cmd "conmux-console" "${board}" "commands.cmd"
             rc=$?
@@ -371,8 +376,10 @@ EOF
                 echo_warning "### WARNING ### ${board} address is not changed !"
             fi
 
-            echo_debug "expect_exec_reboot \"conmux-console\" \"${board}\""
-            expect_exec_reboot "conmux-console" "${board}"
+            echo_debug "reboot_device \"${board}\""
+            reboot_device "${board}"
+            #echo_debug "expect_exec_reboot \"conmux-console\" \"${board}\""
+            #expect_exec_reboot "conmux-console" "${board}"
 
         fi
 
@@ -408,6 +415,7 @@ dut-dump-probe 6
 dut-dump-probe 7
 EOF
 
+    echo_debug "exec_expect_serial \"acme\" \"commands.cmd\""
     exec_expect_serial "acme" "commands.cmd"
     #expect_exec_cmd "conmux-console" "acme" "commands.cmd"
     rc=$?
@@ -501,8 +509,8 @@ board_list()
 cat << EOF > commands.cmd
 dut-hard-reset ${acme_port}
 EOF
-
-        exec_expect_serial "conmux-console" "acme" "commands.cmd"
+        echo_debug "exec_expect_serial \"acme\" \"commands.cmd\""
+        exec_expect_serial "acme" "commands.cmd"
         #expect_exec_cmd "acme" "commands.cmd"
         rc=$?
 
@@ -628,6 +636,7 @@ EOF
         else 
             src_cnx_type="serial"
             src_cnx_dest="${src_device}"
+            echo_debug "exec_expect_serial \"${src_cnx_dest}\" \"commands.cmd\""
             exec_expect_serial "${src_cnx_dest}" commands.cmd
         fi
 
@@ -680,6 +689,7 @@ EOF
             cat << EOF > commands.cmd
 echo '${src_file}'
 EOF
+            echo_debug "exec_expect_serial \"${src_cnx_dest}\" \"commands.cmd\""
             exec_expect_serial "${src_cnx_dest}" commands.cmd
             #expect_exec_cmd "${src_cnx_type}" "${src_cnx_dest}" commands.cmd
             rc=$?
@@ -704,6 +714,7 @@ EOF
                 cat << EOF > commands.cmd
 echo '${public_key}' > ~/.ssh/$src_file
 EOF
+                echo_debug "exec_expect_serial \"${dst_cnx_dest}\" \"commands.cmd\""
                 exec_expect_serial "${dst_cnx_dest}" commands.cmd
                 #expect_exec_cmd "${dst_cnx_type}" "${dst_cnx_dest}" commands.cmd
                 rc=$?
@@ -725,6 +736,7 @@ EOF
             cat << EOF > commands.cmd
 echo '${public_key}' > ~/.ssh/${key_user_addr}_id_rsa.pub
 EOF
+            echo_debug "exec_expect_serial \"${dst_cnx_dest}\" \"commands.cmd\""
             exec_expect_serial "${dst_cnx_dest}" commands.cmd
             #expect_exec_cmd "${dst_cnx_type}" "${dst_cnx_dest}" commands.cmd
             rc=$?
@@ -745,6 +757,7 @@ EOF
     if [ "${dst_cnx_type}" == "ssh" ]; then
         expect_exec_cmd "${dst_cnx_type}" "${dst_cnx_dest}" commands.cmd
     else
+        echo_debug "exec_expect_serial \"${dst_cnx_dest}\" \"commands.cmd\""
         exec_expect_serial "${dst_cnx_dest}" commands.cmd
     fi
     rc=$?
@@ -758,8 +771,9 @@ EOF
     #Note: restart of acme will also restart dut's BUT sometime, eth iface of dut will not start
     #      So, after restart acme, you must restart dut with dut-hard-reset that cut off input alim
     echo_log "    => Check if ${dst_addr} (${dst_ip}) is restarted"
-    echo_debug "copy_check_sshkey - expect_exec_reboot \"${dst_cnx_type}\" \"${dst_cnx_dest}\""
-    expect_exec_reboot "${dst_cnx_type}" "${dst_cnx_dest}"
+    echo_debug "copy_check_sshkey - reboot_device \"${dst_cnx_dest}\""
+    reboot_device "${dst_cnx_dest}"
+    #expect_exec_reboot "${dst_cnx_type}" "${dst_cnx_dest}"
     echo_debug "copy_check_sshkey - wait_board_restart \"${dst_ip}\""
     wait_board_restart "${dst_ip}"
     if [ "${src_device}" != "local" ]; then
@@ -931,11 +945,8 @@ command 'off' 'Power off ${board}' 'ssh ${ACME_ADDR} dut-switch-off ${port}'
 command 'on' 'Power on ${board}' 'ssh ${ACME_ADDR} dut-switch-on ${port}'""" >> $tmpfile
         sudo cat $tmpfile >> /etc/conmux/${board}.cf
 
-        echo_debug "restart conmux service"
-        sudo stop conmux
-        sleep 1
-        sudo start conmux
-        sleep 2
+        echo_debug "restart serial service"
+        restart_serial
 
         echo_log "Create lava conf of ${board}"
         debug_option=""
@@ -1056,10 +1067,6 @@ create_board_conf()
         exit 0
     fi
 
-    #check or define define acme_addr
-    echo_debug "CALL acme_addr"
-    #acme_addr
-    #board_addr "acme" 
     #check or define boardlist
     echo_debug "CALL board_list"
     board_list

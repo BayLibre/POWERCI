@@ -177,12 +177,25 @@ restart_serial()
 ###################################################################################
 ## 
 ###################################################################################
+reboot_device()
+{
+    local device_name=$1
+
+    cnx_cmd="conmux-console ${device_name}"
+    echo_debug "exec_expect \"${cnx_cmd}\" \"-\" \"--reboot\""
+    exec_expect "${cnx_cmd}" "-" "--reboot" 
+}
+
+###################################################################################
+## 
+###################################################################################
 exec_expect_serial()
 {
     local device_name=$1
     local commands="$2"
 
     cnx_cmd="conmux-console ${device_name}"
+    echo_debug "exec_expect \"${cnx_cmd}\" \"$commands\""
     exec_expect "${cnx_cmd}" "$commands"
 }
 

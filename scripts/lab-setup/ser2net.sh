@@ -147,6 +147,19 @@ restart_serial()
 ###################################################################################
 ## 
 ###################################################################################
+reboot_device()
+{
+    local device_name=$1
+
+    port=`read_port ${device_name}`
+    cnx_cmd="telnet ${port}"
+    echo_debug "exec_expect \"${cnx_cmd}\" \"-\" \"--reboot\""
+    exec_expect "${cnx_cmd}" "-" "--reboot"
+}
+
+###################################################################################
+## 
+###################################################################################
 exec_expect_serial()
 {
     local device_name=$1
@@ -154,7 +167,7 @@ exec_expect_serial()
 
     port=`read_port ${device_name}`
     cnx_cmd="telnet ${port}"
-
+    echo_debug "exec_expect \"${cnx_cmd}\" \"$commands\""
     exec_expect "${cnx_cmd}" "$commands"
 }
 

@@ -137,6 +137,8 @@ class expect_generic:
             logging.info("   => rc: %s" % rc)
             logging.info("   => response: %s" % res)
     
+        time.sleep(1)
+
         return A_cmds
 
     def get_param(self):
@@ -217,13 +219,15 @@ class expect_serial(expect_generic):
         logging.info(' => Done')
         self.p.setwinsize(1000,1000)
         
+        time.sleep(1)
+
         logging.debug("Send \r, expect 'login:' or prompt")
         self.p.sendline("\r")
         if self.expect(["login: ",self.prompt]) == 0:
             logging.debug(" => login: received")
             logging.info('Need login info')
 
-            logging.debug("Send login, expect 'Password:' or prompt")
+            logging.debug("Send login(%s), expect 'Password:' or prompt" % self.login)
             self.p.sendline(self.login)
             if self.expect(["Password: ",self.prompt]) == 0:
                 logging.debug(" => 'Password:' received")
@@ -256,6 +260,9 @@ class expect_serial(expect_generic):
         self.p.sendline("exit")
         logging.debug("expect 'login:' before exit with success ")
         i=self.expect(["login: "])
+
+        time.sleep(1)
+
         logging.info(' => Done')
 
 class expect_conmux(expect_serial):
@@ -300,6 +307,7 @@ class expect_ssh(expect_generic):
 
     def connect(self,args):
         self.p.setwinsize(1000,1000)
+        time.sleep(1)
         i = self.expect(["ssh: Could not resolve hostname (.*): Name or service not known",
                   "Are you sure you want to continue connecting \(yes/no\)\?","password:", "# "])
         if i == 0:
@@ -371,6 +379,7 @@ class expect_scp(expect_generic):
         self.prompt='#'
 
     def connect(self,args):
+        time.sleep(1)
         i = self.expect(["Name or service not known",
                   "Are you sure you want to continue connecting \(yes/no\)\?",
                   "%s(.*)'s password:" % self.newline,
@@ -427,6 +436,7 @@ class expect_scp(expect_generic):
             logging.debug(" => prompt received")
             logging.debug(" => wait for commands")
 
+        time.sleep(1)
         self.p.setwinsize(1000,1000)
 
         self.p.sendline("\r")
