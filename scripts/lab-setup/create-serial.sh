@@ -430,15 +430,6 @@ get_connected_devices()
 
             baud=""
             baud=`read_baud_rate ${device}`
-            #if [ "${SERIAL_TYPE}" == "conmux" ]; then
-            #    if [ -f /etc/conmux/${device}.cf ]; then
-            #        baud=`cat /etc/conmux/${device}.cf | grep "application console" | awk -F"/dev/${device} " '{ print $2 }' | cut -d\" -f1`
-            #    fi
-            #elif [ "${SERIAL_TYPE}" == "ser2net" ]; then
-            #    if [ -f /etc/ser2net.conf ]; then
-            #        baud=`cat /etc/ser2net.conf | grep "/dev/${device}" | awk -F\: '{ print $5 }' | awk '{ print $1 }'`
-            #    fi
-            #fi
             
             if [  -z "${DEVICE_LIST}" ]; then DEVICE_LIST="$device:$tty:$kernel:$baud"
             else                              DEVICE_LIST="${DEVICE_LIST} $device:$tty:$kernel:$baud"
@@ -524,97 +515,7 @@ manage_symlink()
 
 }
 
-###################################################################################
-## 
-###################################################################################
-#remove_conmux_conf()
-#{
-#    local device_name=$1
-#
-#    if [ -f "/etc/conmux/${device_name}.cf" ]; then
-#        echo_debug "sudo rm -rf /etc/conmux/${device_name}.cf"
-#        sudo rm -f /etc/conmux/${device_name}.cf
-#    fi
-#}
 
-###################################################################################
-## 
-###################################################################################
-#create_conmux_conf()
-#{
-#    for d in ${ADD_DEVICE_LIST}; do
-#        device=`echo $d | awk -F":" '{ print $1 }'`
-#        echo_question -o "-n" "What is the baud rate used to connect to ${device}? (Default=115200)"
-#        read baud
-#        if [ -z "${baud}" ]; then baud=115200; fi
-
-#        DEVICE_LIST=${DEVICE_LIST/$d/$d:$baud}
-#        tmpfile=`mktemp`
-#        echo """listener ${device}
-#application console '${device} console' 'exec sg dialout \"/usr/local/bin/cu-loop /dev/${device} ${baud}\"'""" > $tmpfile
-#        sudo mv -f $tmpfile /etc/conmux/${device}.cf
-#    done  
-#}
-
-###################################################################################
-## 
-###################################################################################
-#check_conmux_config()
-#{
-#    echo_log ""
-#    echo_log "Check if conmux config is started for each devices"
-#    echo "" > tmp.tmp
-#    CONMUX_CONNECTED=""
-#    config_error="no"
-#    for d in ${DEVICE_LIST}; do
-#        device=`echo $d | awk -F":" '{ print $1 }'`
-#        status=`wait_conmux_status "$device" "connected" | tr -d '[[:space:]]'`
-#        pid=`ps -aux | grep /usr/sbin/conmux | grep /etc/conmux/${device}.cf | awk '{ print $2 }'`
-#        if [ -z "$pid" ]; then
-#            echo_error "  $device: status=$status started=NO config_file=/etc/conmux/${device}" >> tmp.tmp
-#            config_error="yes"
-#        else
-#            tcp_port=`sudo lsof -i | grep conmux | grep $pid | awk -F"TCP" '{ print $2 }'`
-#            if [ "$status" != "connected" ]; then
-#                echo_warning "  $device: status=$status started=YES config_file=/etc/conmux/${device}.cf pid=${pid} TCP=${tcp_port// /}"  >> tmp.tmp
-#            else
-#                echo_info "  $device: status=$status started=YES config_file=/etc/conmux/${device}.cf pid=${pid} TCP=${tcp_port// /}"  >> tmp.tmp
-#
-#                CONMUX_CONNECTED="${CONMUX_CONNECTED} $d"
-#            fi
-#            
-#        fi
-#    done
-#    cat tmp.tmp | column -t
-#    sudo rm -f tmp.tmp
-#}
-
-###################################################################################
-## 
-###################################################################################
-#wait_conmux_status()
-#{
-#    echo_log ""
-#    device=$1
-#    status_expected=$2
-#    timeout=60
-#    start=`date +%s`
-#    reach="false"
-#    while [ `date +%s` -lt $((start+timeout)) ]; do
-#        status_current=`conmux-console --status $device`
-#        if [ "${status_current}" == "${status_expected}" ]; then
-#            duration=$((`date +%s`-start))
-#            echo "$status_current"
-#            reach="true"
-#            break
-#        fi
-#        sleep 1
-#    done
-#    if [ "reach" == "false" ]; then
-#        echo "$status_current"
-#        return 1
-#    fi
-#}
 ###################################################################################
 ## 
 ###################################################################################
@@ -766,37 +667,14 @@ create_serial()
     modif_hosts
 
 
-    #check if cu-loop is in /usr/local/bin, copy it instead
-    #if [ "`which cu`" == "" ];then
-    #    echo_warning "CU is not yet installed. installation will start now."
-    #    sudo apt-get install cu
-    #fi
-    #if [ ! -f /usr/local/bin/cu-loop ];then
-    #    echo_debug "copy cu-loop to /usr/local/bin"
-    #    sudo cp -f cu-loop /usr/local/bin/.
-    #fi
-
-    #sudo chmod -R 775 /usr/spool
-
     #then restart serial
     echo_debug "restart serial service"
     start_serial
-    #sudo stop conmux
-    #sleep 1
-    #sudo start conmux
-    #sleep 2
 
-    #check conmux starts well
-    #if [ -z "`ps -ef | grep conmux | grep -v grep`" ] || [ -z "`ps aux | grep "/bin/cu " | grep -v grep`" ]; then
-    #    echo_error "Conmux did not starts successfully"
-    #    exit 1
-    #fi
-
-    #check conmux config
+    #check if serial is started
     check_serial_started
-    #check_conmux_config
 
-    #create the conmux boards configuration in /etc/conmux/<device_name>.cf
+    #create the boards configurations needed
     if [ ${DEBUG_LVL} -eq 1 ]; then   DEBUG_OPTION="-v"
     elif [ ${DEBUG_LVL} -eq 2 ]; then DEBUG_OPTION="-vv"
     else                              DEBUG_OPTION=""

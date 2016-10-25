@@ -198,40 +198,6 @@ expect_exec_cmd()
 }
 
 ###################################################################################
-#expect_exec_reboot()
-#{
-#    echo_debug "expect_exec_reboot START"
-#    local debug=`if [ "$DEBUG_EN" == "yes" ]; then echo "-v"; else echo ""; fi`
-#    local log="-l $LOGFILE --keeplog"
-#    local cnx_type="$1"
-#    local dest_addr="$2"
-
-#    tmp_res="reboot.res"
-#    echo_debug "python expect_exec_cmd.py --reboot $debug $log ${cnx_type} ${dest_addr} \"\" > ${tmp_res} 2>&1"
-#    python expect_exec_cmd.py --reboot $debug $log ${cnx_type} ${dest_addr} "" > ${tmp_res} 2>&1
-#    rc=$?
-
-#    echo_debug " => rc = $rc"
-#    echo_debug " => result:"
-#    echo_debug "`cat ${tmp_res}`"
-#    if [ $rc -ne 0 ]; then
-#        echo "### WARNING ### reboot fails" >> ${tmp_res}
-#        #echo_warning "`cat ${tmp_res}`"
-#        ret_code=1
-#    else
-#        ret_code=0
-#    fi
-#    if [ "`cat ${tmp_res} | grep '### ERROR ###'`" != "" ]; then
-#        #echo_error "`cat ${tmp_res}`"
-#        ret_code=1
-#    fi
-
-#    echo_debug "expect_exec_reboot END"
-#    return $ret_code
-
-#}
-
-###################################################################################
 wait_board_restart()
 {
     local board_ip=$1
