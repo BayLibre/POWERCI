@@ -7,27 +7,32 @@ see the scripts located under :
 
 ## Setup serial/ssh access ##
 
-Serial access is done via conmux, a console access multiplexor. This is a telnet like tool but it permit multiple accesses to device at same time.
+Serial access is done via conmux by default, a console access multiplexor. This is a telnet like tool but it permit multiple accesses to device at same time.
 
 more information on conmux: <http://autotest.readthedocs.io/en/latest/main/remote/Conmux-OriginalDocumentation.html>
+
+But it is possible to work with telnet with option: `--type ser2net`
 
 The pre-requisite element is a device-type config in lava-dispatcher/device-types
 As per <http://127.0.1.1/static/docs/known-devices.html>
 
 To setup the serial/ssh access with the needed config file automatically created, just launch 
 ```
-$ create-conmux.sh -c
+$ create-serial.sh -c
 ```
 -c option will clear the ttyUSB devices connected. It will ask you to unplug every ttyUSB before processing.
 
 After a while and some question, if process end successfully, you should have:
 
   * [your board].conf under /etc/lava-dispatcher/devices/
-  * [your board].cf under /etc/conmux/
-  * cu-loop script under /usr/local/bin
+  * [your board].cf under /etc/conmux/ if conmux used by default
+  * cu-loop script under /usr/local/bin if conmux used by default
+  * /etc/ser2net.con modified with new port for your devices if ser2net used instead of conmux
   * check that your boards are detected as usb device
   * link acme and board under tests to right ttyUSB devices.
   * /etc/hosts modified with hostname.local
+
+if conmux is used (default), you can check: 
   * conmux well started with our devices:
 
 ```
@@ -51,12 +56,12 @@ connected
   * SSH connection done from lab, acme and dut
 
 
-Here are some usage of create-conmux.sh
+Here are some usage of create-serial.sh
 
-create-conmux.sh usage:
+create-serial.sh usage:
 ```
-./create-conmux.sh -h
-usage: create-conmux.sh [OPTION]
+./create-serial.sh -h
+usage: create-serial.sh [OPTION]
 
 [OPTION]
     -h | --help:        Print this usage
@@ -65,11 +70,13 @@ usage: create-conmux.sh [OPTION]
     -v | --verbose:     Debug traces
     -s | --status:      Get status
     -l | --logfile:     Logfile to use
+    -t | --type:        Serial type connection to use (conmux|ser2net)
+
 ```
 
-conmux current status
+lab current status (default = conmux)
 ```
-$ ./create-conmux.sh --status
+$ ./create-serial.sh --status
 USB and devices connected (2):
   /dev/ttyUSB0    acme
   /dev/ttyUSB1    am335x-boneblack
@@ -184,46 +191,22 @@ am335x-boneblack  beaglebone-black  ttyUSB1  1          115200     root@am335x-b
 Create SSH connection between lab(testlava-server), acme and dut
     Copy testlava-server public key to baylibre-acme-lab
     => Check ssh connection from testlava-server to baylibre-acme-lab
-Check ssh connection to:
- - baylibre-acme-lab => not pingable
- - baylibre-acme-lab.local => OK
- - 192.168.1.38 => OK
     => Copy local /home/test-lava/.ssh/id_rsa.pub key via 'ssh' to root@192.168.1.38
 id_rsa.pub                                                                                      100%  407     0.4KB/s   00:00    
     => Check if baylibre-acme-lab (192.168.1.38) is restarted
 .
     => Check ssh connection from testlava-server to baylibre-acme-lab after key copy
-Check ssh connection to:
- - baylibre-acme-lab => not pingable
- - baylibre-acme-lab.local => OK
- - 192.168.1.38 => OK
     Done copy testlava-server public key to baylibre-acme-lab
     Copy testlava-server public key to am335x-boneblack
     => Check ssh connection from testlava-server to am335x-boneblack
-Check ssh connection to:
- - am335x-boneblack => not pingable
- - am335x-boneblack.local => not pingable
- - 192.168.1.59 => not pingable
     => Copy local /home/test-lava/.ssh/id_rsa.pub key via 'conmux-console' to am335x-boneblack
     => Check if am335x-boneblack (192.168.1.59) is restarted
 .
     => Check ssh connection from testlava-server to am335x-boneblack after key copy
-Check ssh connection to:
- - am335x-boneblack => OK
- - am335x-boneblack.local => OK
- - 192.168.1.59 => OK
     Done copy testlava-server public key to am335x-boneblack
     Copy am335x-boneblack public key to acme
     => Check ssh connection from testlava-server to am335x-boneblack
-Check ssh connection to:
- - am335x-boneblack => OK
- - am335x-boneblack.local => OK
- - 192.168.1.59 => OK
     => Check ssh connection from testlava-server to baylibre-acme-lab
-Check ssh connection to:
- - baylibre-acme-lab => not pingable
- - baylibre-acme-lab.local => OK
- - 192.168.1.38 => OK
     => Copy .ssh/id_rsa.pub key via 'ssh' to 'root@192.168.1.38'
 id_rsa.pub                                                                                      100%  403     0.4KB/s   00:00    
 root@192.168.1.59_id_rsa.pub                                                                    100%  403     0.4KB/s   00:00    
@@ -232,15 +215,7 @@ root@192.168.1.59_id_rsa.pub                                                    
     => Check if am335x-boneblack (192.168.1.59) is restarted
 .....
     => Check ssh connection from testlava-server to baylibre-acme-lab after key copy
-Check ssh connection to:
- - baylibre-acme-lab => not pingable
- - baylibre-acme-lab.local => OK
- - 192.168.1.38 => OK
     => Check ssh connection from testlava-server to am335x-boneblack after key copy
-Check ssh connection to:
- - am335x-boneblack => OK
- - am335x-boneblack.local => OK
- - 192.168.1.59 => OK
     => Check ssh connection from am335x-boneblack to baylibre-acme-lab after key copy
 check-ssh.sh                                                                                    100% 2176     2.1KB/s   00:00    
     Done copy testlava-server public key to am335x-boneblack

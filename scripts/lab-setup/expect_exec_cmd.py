@@ -210,23 +210,10 @@ class expect_generic:
             
         
         
-
-class expect_conmux(expect_generic):
-    def __init__(self,mandatory,logfile):
-        self.device=mandatory[0]
-        expect_generic.__init__(self,'conmux-console',self.device,logfile)
-
-        self.user_passwd=mandatory[1].split(":")
-        self.login = self.user_passwd[0]
-        self.passwd= ""
-        if len(self.user_passwd)==2: 
-            self.passwd=self.user_passwd[1]
-
-        self.newline='\r\r\n'
-        self.prompt='#'
+class expect_serial(expect_generic):
 
     def connect(self,args):
-        self.expect(["Connected to %s console .*" % self.device])
+        self.expect(["Connected to %s console .*" % self.device,"ser2net port .*"])
         logging.info(' => Done')
         self.p.setwinsize(1000,1000)
         
@@ -270,6 +257,38 @@ class expect_conmux(expect_generic):
         logging.debug("expect 'login:' before exit with success ")
         i=self.expect(["login: "])
         logging.info(' => Done')
+
+class expect_conmux(expect_serial):
+    def __init__(self,mandatory,logfile):
+        self.device=mandatory[0]
+        expect_generic.__init__(self,'conmux-console',self.device,logfile)
+
+        self.user_passwd=mandatory[1].split(":")
+        self.login = self.user_passwd[0]
+        self.passwd= ""
+        if len(self.user_passwd)==2: 
+            self.passwd=self.user_passwd[1]
+
+        self.newline='\r\r\n'
+        self.prompt='#'
+
+
+
+class expect_ser2net(expect_serial):
+    def __init__(self,mandatory,logfile):
+        self.device="localhost "+str(mandatory[0])
+        expect_generic.__init__(self,'telnet',self.device,logfile)
+
+        self.user_passwd=mandatory[1].split(":")
+        self.login = self.user_passwd[0]
+        self.passwd= ""
+        if len(self.user_passwd)==2: 
+            self.passwd=self.user_passwd[1]
+
+        self.newline='\r\n'
+        self.prompt='#'
+
+
 
 class expect_ssh(expect_generic):
     def __init__(self,mandatory,logfile):
@@ -449,6 +468,10 @@ def conmux_exec_cmd(args):
     mandatory_args=[args.device,args.user_passwd]
     return expect_exec_cmd(expect_conmux,mandatory_args,args)
 
+def ser2net_exec_cmd(args):
+    mandatory_args=[args.port,args.user_passwd]
+    return expect_exec_cmd(expect_ser2net,mandatory_args,args)
+
 def ssh_exec_cmd(args):
     mandatory_args=[args.addr,args.password]
     return expect_exec_cmd(expect_ssh,mandatory_args,args)
@@ -469,7 +492,7 @@ def main():
                        help="keep logfile if already exist, remove it if not")
     parser.add_argument("-v", "--verbosity", action="store_true", dest='verbosity', default=False, 
                        help="verbosity level, default=0")
-    parser.add_argument("--version",         action="version", version='expect_exec_cmd.py version: 0.2', 
+    parser.add_argument("--version",         action="version", version='expect_exec_cmd.py version: 1.0', 
                        help="print version")
     parser.add_argument("--reboot",          action="store_true", dest='reboot', default=False,
                        help="reboot host")
@@ -483,6 +506,15 @@ def main():
     parser_conmux.add_argument('commands', metavar='CMD', nargs='+',
                        help="command(s) (can be file name) to be executed")
     parser_conmux.set_defaults(func=conmux_exec_cmd)
+
+    parser_ser2net=subparsers.add_parser('telnet', help="connection via telnet.")
+    parser_ser2net.add_argument('port',  metavar='port', 
+                        help="port number used to connect")
+    parser_ser2net.add_argument('-u', "--user",      action="store",      dest='user_passwd', default="root", 
+                        help="user[:password] for connection, default user is root")
+    parser_ser2net.add_argument('commands', metavar='CMD', nargs='+',
+                       help="command(s) (can be file name) to be executed")
+    parser_ser2net.set_defaults(func=ser2net_exec_cmd)
 
     parser_ssh=subparsers.add_parser('ssh', help="connection via ssh.")
     parser_ssh.add_argument('addr',  metavar='addr', 

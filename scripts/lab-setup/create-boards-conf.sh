@@ -4,7 +4,7 @@ set -o errtrace
 #set -o nounset #Error if variable not set before use  
 #set -o errexit #Exit for any error found... 
 
-VERSION="0.3"
+VERSION="1.0"
 
 BLUE=`tput setaf 4`
 NC=`tput sgr0`
@@ -34,7 +34,7 @@ parse_args()
     STATUS="no"
 
     ## Analyse input parameter
-    TEMP=`getopt -o chl:d:sv --long clear,help,logfile:,device:,status,version -- "$@"`
+    TEMP=`getopt -o chl:d:st:v --long clear,help,logfile:,device:,status,type:,version -- "$@"`
 
     if [ $? != 0 ] ; then echo_error "Terminating..." >&2 ; exit 1 ; fi
 
@@ -64,6 +64,9 @@ parse_args()
             -s|--status)
                 STATUS="yes"
                 shift;;
+            -t|--type)
+                SERIAL_TYPE=$2
+                shift 2;;
             --) shift ; break ;;
             *) echo_error "Internal error!" ; exit 1 ;;
         esac
@@ -73,11 +76,8 @@ parse_args()
     echo_debug "Logfile:       ${LOGFILE}"
     echo_debug "Debug Enabled: ${DEBUG_EN}"
     echo_debug "Device list:   ${DEVICE_LIST}"
+    echo_debug "Serial Type:   ${SERIAL_TYPE}"
 
-    if [ "${STATUS}" == "yes" ]; then
-        get_status
-        exit 0
-    fi
 }
 
 ###################################################################################
@@ -272,8 +272,8 @@ whoami
 uname -n
 ifconfig eth0 | grep 'inet addr' | sed 's/\s\+/ /g' | cut -d: -f2 | cut -d' ' -f1
 EOF
-
-        expect_exec_cmd "conmux-console" "${board}" "commands.cmd"
+        exec_expect_serial "${board}" "commands.cmd"
+        #expect_exec_cmd "conmux-console" "${board}" "commands.cmd"
         rc=$?
  
         if [ $rc -eq 0 ]; then
@@ -357,8 +357,8 @@ mv -f /etc/hosts.new /etc/hosts
 hostname -F /etc/hostname
 uname -n
 EOF
-
-            expect_exec_cmd "conmux-console" "${board}" "commands.cmd"
+            exec_expect_serial "${board}" "commands.cmd"
+            #expect_exec_cmd "conmux-console" "${board}" "commands.cmd"
             rc=$?
 
             if [ $rc -eq 0 ]; then
@@ -407,7 +407,9 @@ dut-dump-probe 5
 dut-dump-probe 6
 dut-dump-probe 7
 EOF
-    expect_exec_cmd "conmux-console" "acme" "commands.cmd"
+
+    exec_expect_serial "acme" "commands.cmd"
+    #expect_exec_cmd "conmux-console" "acme" "commands.cmd"
     rc=$?
 
     if [ $rc -eq 0 ]; then
@@ -499,7 +501,9 @@ board_list()
 cat << EOF > commands.cmd
 dut-hard-reset ${acme_port}
 EOF
-        expect_exec_cmd "conmux-console" "acme" "commands.cmd"
+
+        exec_expect_serial "conmux-console" "acme" "commands.cmd"
+        #expect_exec_cmd "acme" "commands.cmd"
         rc=$?
 
         if [ $rc -eq 0 ]; then
@@ -610,20 +614,25 @@ copy_check_sshkey()
         bash check-ssh.sh "${src_user}" "${src_addr} ${src_addr}.local ${src_ip}" > check-ssh.res
         rc=$?
         echo_debug "`cat check-ssh.res`"
-        if [ $rc -eq 0 ]; then 
-            src_cnx_type="ssh"
-            src_cnx_dest="${src_user}@${src_ip}"
-        else 
-            src_cnx_type="conmux-console"
-            src_cnx_dest="${src_device}"
-        fi
 
         #check or create src public key
 cat << EOF > commands.cmd
 if [ ! -f "~/.ssh/id_rsa.pub" ]; then ssh-keygen -N "" -f ~/.ssh/id_rsa; fi
 ls -lsa ~/.ssh/
 EOF
-        expect_exec_cmd "${src_cnx_type}" "${src_cnx_dest}" commands.cmd
+
+        if [ $rc -eq 0 ]; then 
+            src_cnx_type="ssh"
+            src_cnx_dest="${src_user}@${src_ip}"
+            expect_exec_cmd "${src_cnx_type}" "${src_cnx_dest}" commands.cmd
+        else 
+            src_cnx_type="serial"
+            src_cnx_dest="${src_device}"
+            exec_expect_serial "${src_cnx_dest}" commands.cmd
+        fi
+
+        #exec_expect_serial "${src_cnx}" commands.cmd
+        #expect_exec_cmd "${src_cnx_type}" "${src_cnx_dest}" commands.cmd
         rc=$?
 
     fi
@@ -638,7 +647,7 @@ EOF
         dst_cnx_type="ssh"
         dst_cnx_dest="${dst_user}@${dst_ip}"
     else 
-        dst_cnx_type="conmux-console"
+        dst_cnx_type="serial"
         dst_cnx_dest="${dst_device}"
     fi
 
@@ -671,7 +680,8 @@ EOF
             cat << EOF > commands.cmd
 echo '${src_file}'
 EOF
-            expect_exec_cmd "${src_cnx_type}" "${src_cnx_dest}" commands.cmd
+            exec_expect_serial "${src_cnx_dest}" commands.cmd
+            #expect_exec_cmd "${src_cnx_type}" "${src_cnx_dest}" commands.cmd
             rc=$?
             if [ $rc -ne 0 ]; then
                 echo_error "### ERROR ### Fail to copy public key from ${src_device} to `uname -n`"
@@ -694,7 +704,8 @@ EOF
                 cat << EOF > commands.cmd
 echo '${public_key}' > ~/.ssh/$src_file
 EOF
-                expect_exec_cmd "${dst_cnx_type}" "${dst_cnx_dest}" commands.cmd
+                exec_expect_serial "${dst_cnx_dest}" commands.cmd
+                #expect_exec_cmd "${dst_cnx_type}" "${dst_cnx_dest}" commands.cmd
                 rc=$?
 
             fi            
@@ -714,7 +725,8 @@ EOF
             cat << EOF > commands.cmd
 echo '${public_key}' > ~/.ssh/${key_user_addr}_id_rsa.pub
 EOF
-            expect_exec_cmd "${dst_cnx_type}" "${dst_cnx_dest}" commands.cmd
+            exec_expect_serial "${dst_cnx_dest}" commands.cmd
+            #expect_exec_cmd "${dst_cnx_type}" "${dst_cnx_dest}" commands.cmd
             rc=$?
         fi        
     fi
@@ -730,7 +742,11 @@ if [ -f "~/.ssh/authorized_keys" ];then sed "/${key_user_addr}/d" ~/.ssh/authori
 cat ~/.ssh/${key_user_addr}_id_rsa.pub >> ~/.ssh/authorized_keys
 rm -f ~/.ssh/${key_user_addr}_id_rsa.pub
 EOF
-    expect_exec_cmd "${dst_cnx_type}" "${dst_cnx_dest}" commands.cmd
+    if [ "${dst_cnx_type}" == "ssh" ]; then
+        expect_exec_cmd "${dst_cnx_type}" "${dst_cnx_dest}" commands.cmd
+    else
+        exec_expect_serial "${dst_cnx_dest}" commands.cmd
+    fi
     rc=$?
 
     if [ $rc -ne 0 ]; then
@@ -1018,6 +1034,8 @@ create_board_conf()
     DEBUG=""
     DEBUG_EN="no"
     DEBUG_LVL=0
+    SERIAL_TYPE="conmux"
+    STATUS="no"
 
     if [ -f ${LOGFILE} ]; then rm -f ${LOGFILE}; fi
 
@@ -1032,6 +1050,11 @@ create_board_conf()
 
     ## Analyse input parameter
     parse_args "$@" 
+    source ${SERIAL_TYPE}.sh
+    if [ "${STATUS}" == "yes" ]; then
+        get_status
+        exit 0
+    fi
 
     #check or define define acme_addr
     echo_debug "CALL acme_addr"
@@ -1051,7 +1074,7 @@ create_board_conf()
     echo_debug "sudo rm -f /etc/lava-dispatcher/devices/*.conf"
     sudo rm -f /etc/lava-dispatcher/devices/*.conf
 
-    #create the acme conmux config file
+    #create the acme config file
     echo_debug "CALL create_board_config"
     create_board_config    
 
@@ -1067,7 +1090,7 @@ cd $abspath
 
 source utils.sh
 
-stderr_log="create-conmux.err"
+stderr_log="create-boards-conf.err"
 if [ -f ${stderr_log} ]; then rm -f ${stderr_log}; fi
 exec 2>${stderr_log}
 

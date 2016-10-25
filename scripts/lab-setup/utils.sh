@@ -22,10 +22,10 @@
 ###################################################################################
 ### Global variable used in the following
 ###################################################################################
-DEBUG_EN="no"
-LOGFILE=""
-STATSFILE=""
-LOCKER=""
+#DEBUG_EN="no"
+#LOGFILE=""
+#STATSFILE=""
+#LOCKER=""
 
 ###################################################################################
 ### echo_log <text>
@@ -282,6 +282,40 @@ get_answer()
         else                                    GET_ANSWER_RESULT="$GET_ANSWER_RESULT,${answers[$((valid_choice-1))]}"
         fi
     done
+}
+
+##############################################################
+exec_expect()
+{
+    echo_debug "expect_exec_cmd START"
+    local debug=`if [ "$DEBUG_EN" == "yes" ]; then echo "-v"; else echo ""; fi`
+    local log="-l $LOGFILE --keeplog"
+    local cnx_cmd="$1"
+    local command_file="$2"
+
+    tmp_res=${command_file%.*}.res
+    echo_debug "python expect_exec_cmd.py $debug $log ${cnx_cmd} $command_file > ${tmp_res} 2>&1"
+    echo_debug "with $command_file containing:"
+    echo_debug "`cat $command_file`"
+    python expect_exec_cmd.py $debug $log ${cnx_cmd} $command_file > ${tmp_res} 2>&1
+    rc=$?
+
+    echo_debug " => rc = $rc"
+    echo_debug " => result:"
+    echo_debug "`cat ${tmp_res}`"
+    if [ $rc -ne 0 ]; then
+        echo "### WARNING ### command execution fails" >> ${tmp_res}
+        ret_code=1
+    else
+        ret_code=0
+    fi
+    if [ "`cat ${tmp_res} | grep '### ERROR ###'`" != "" ]; then
+        ret_code=1
+    fi
+
+    echo_debug "expect_exec_cmd END"
+    return $ret_code
+
 }
 
 
