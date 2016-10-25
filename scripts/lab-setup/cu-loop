@@ -5,13 +5,11 @@ BAUD=${2:-115200}
 CU_LOCAL=/usr/local/bin/cu
 CU_MAIN=/usr/bin/cu
 
-if [ -e $CU_LOCAL ];then
-    CU=$CU_LOCAL
-elif [ -e $CU_MAIN ];then
-    CU=$CU_MAIN
-else
-    echo "ERROR no such file $CU_LOCAL or $CU_MAIN"
-    exit 1
+CU=$CU_LOCAL
+
+NORTSCTS="--nortscts"
+if [ -z "`$CU --help | grep '\-\-nortscts'`" ]; then
+    NORTSCTS=""
 fi
 
 while true; do
@@ -19,16 +17,14 @@ while true; do
   # NOTE: cu src needs mofication to add --nortscts option
   # c.f. Debian bug: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=336996
   #
-  if [ -z "`$CU --help | grep nortscts`" ]; then
-      test -e $DEV && $CU -l $DEV -s $BAUD --parity=none --nostop dir
-  else
-      test -e $DEV && $CU -l $DEV -s $BAUD --parity=none --nostop --nortscts dir
-  fi
+  if [ -e $DEV ]; then
+      $CU -l $DEV -s $BAUD --parity=none --nostop $NORTSCTS dir
+      if [ $? -ne 0 ];then
+          echo "ERROR during cu-loop execution"
+          exit 1
+      fi
 
-  if [ $? -ne 0 ];then
-      echo "ERROR during cu-loop execution"
-      exit 1
   fi
-
+  #test -e $DEV && $CU_LOCAL -l $DEV -s $BAUD --parity=none --nostop --nortscts dir
   sleep 0.5
 done
