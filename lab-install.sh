@@ -36,11 +36,18 @@ lab_install()
         echo "### ERROR ### File /etc/lava-server/settings.conf not found" 
     fi
 
-    if [ ! -f /etc/apache2/sites-available/lava-server.conf ]; then
-        echo "### Need to check or create /et/apache2/sites-available/lava-server.conf"
+    echo "apache2 service" 
+    if [ -f /etc/apache2/ports.conf ]; then
+        if [ -z "`cat /etc/apache2/ports.conf | grep 'Listen 10080'`" ]; then
+            sudo cat /home/$USER/POWERCI/fs-overlay/etc/apache2/ports.conf >> /etc/apache2/ports.conf
+        fi
+    else
+        sudo ln -fs /home/$USER/POWERCI/fs-overlay/etc/apache2/ports.conf /etc/apache2/ports.conf
     fi
 
-    echo "apache2 service" 
+    if [ -f /etc/apache2/sites-available/lava-server.conf ]; then sudo rm -f /etc/apache2/sites-available/lava-server.conf; fi
+    sudo ln -fs /home/$USER/POWERCI/fs-overlay/etc/apache2/sites-available/default-ssl.conf /etc/apache2/sites-available/lava-server.conf
+
     if [ "`sudo a2query -s 000-default | grep enabled 2>/dev/null`" != ""  ]; then
         sudo a2dissite 000-default
     fi
@@ -50,28 +57,24 @@ lab_install()
         fi
     fi
     if [ -z "`cat /etc/apache2/sites-enabled/lava-server.conf | grep VirtualHost | grep ':10080'`" ]; then
-        cat /etc/apache2/sites-available/lava-server.conf | sed -e "s/:80>/:10080>/g" > /etc/apache2/sites-available/lava-server.conf.new
-        sudo mv -f /etc/apache2/sites-available/lava-server.conf.new /etc/apache2/sites-available/lava-server.conf
+        cat /etc/apache2/sites-available/lava-server.conf | sed -e "s/:80>/:10080>/g" > lava-server.conf.new
+        sudo mv -f lava-server.conf.new /etc/apache2/sites-available/lava-server.conf
     fi
     if [ "`cat /etc/apache2/sites-enabled/lava-server.conf | grep ServerName | awk '{ print $2 }'`" != "`uname -n`" ]; then
-        cat /etc/apache2/sites-available/lava-server.conf | sed -e "s/ServerName [a-zA-Z0-9 \t-_]*/ServerName `uname -n`/g" > /etc/apache2/sites-available/lava-server.conf.new
-        sudo mv -f /etc/apache2/sites-available/lava-server.conf.new /etc/apache2/sites-available/lava-server.conf
+        cat /etc/apache2/sites-available/lava-server.conf | sed -e "s/ServerName .*/ServerName `uname -n`/g" > lava-server.conf.new
+        sudo mv -f lava-server.conf.new /etc/apache2/sites-available/lava-server.conf
     fi
     if [ "`cat /etc/apache2/sites-enabled/lava-server.conf | grep ServerAdmin | awk '{ print $2 }'`" != "webmaster@localhost" ]; then
-        cat /etc/apache2/sites-available/lava-server.conf | sed -e "s/ServerAdmin [a-zA-Z0-9 \t-_.@]*/ServerAdmin webmaster@localhost/g" > /etc/apache2/sites-available/lava-server.conf.new
-        sudo mv -f /etc/apache2/sites-available/lava-server.conf.new /etc/apache2/sites-available/lava-server.conf
+        cat /etc/apache2/sites-available/lava-server.conf | sed -e "s/ServerAdmin .*/ServerAdmin webmaster@localhost/g" > lava-server.conf.new
+        sudo mv -f lava-server.conf.new /etc/apache2/sites-available/lava-server.conf
     fi
-    if [ -z "`cat /etc/apache2/ports.conf | grep 'Listen 10080'`" ]; then
-        cat /etc/apache2/ports.conf | sed -e "s/Listen 80/Listen 10080/g" > /etc/apache2/ports.conf.new
-        mv -f /etc/apache2/ports.conf.new /etc/apache2/ports.conf
-    fi
-    if [ -z "`cat /etc/apache2/ports.conf | grep 'Listen 10443'`" ]; then
-        cat /etc/apache2/ports.conf | sed -e "s/Listen 443/Listen 10443/g" > /etc/apache2/ports.conf.new
-        mv -f /etc/apache2/ports.conf.new /etc/apache2/ports.conf
-    fi
+    #if [ -z "`cat /etc/apache2/ports.conf | grep 'Listen 10443'`" ]; then
+    #    cat /etc/apache2/ports.conf | sed -e "s/Listen 443/Listen 10443/g" > /etc/apache2/ports.conf.new
+    #    mv -f /etc/apache2/ports.conf.new /etc/apache2/ports.conf
+    #fi
     if [ -z "`cat /etc/apache2/apache2.conf | grep ServerName`" ]; then
-        cat /etc/apache2/apache2.conf | sed -e "s/# Global configuration/# Global configuration\nServerName localhost/g" > /etc/apache2/apache2.conf.new
-        mv -f /etc/apache2/apache2.conf.new /etc/apache2/apache2.conf
+        cat /etc/apache2/apache2.conf | sed -e "s/# Global configuration/# Global configuration\nServerName localhost/g" > apache2.conf.new
+        sudo mv -f apache2.conf.new /etc/apache2/apache2.conf
     fi
     sudo service apache2 restart
 
