@@ -176,7 +176,7 @@ lab_install()
     else                              DEBUG_OPTION=""
     fi
 
-    bash ./scripts/lab-setup/create-serial ${DEBUG_OPTION} -c
+    bash ./scripts/lab-setup/create-serial.sh ${DEBUG_OPTION} -c
 }
 ###################################################################################
 ### echo_type [-o <echo option>] <type> <text>
