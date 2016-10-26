@@ -737,8 +737,8 @@ EOF
     #Note: restart of acme will also restart dut's BUT sometime, eth iface of dut will not start
     #      So, after restart acme, you must restart dut with dut-hard-reset that cut off input alim
     echo_log "    => Check if ${dst_addr} (${dst_ip}) is restarted"
-    echo_debug "copy_check_sshkey - reboot_device \"${dst_cnx_dest}\""
-    reboot_device "${dst_cnx_dest}"
+    echo_debug "copy_check_sshkey - reboot_device \"${dst_device}\""
+    reboot_device "${dst_device}"
     #expect_exec_reboot "${dst_cnx_type}" "${dst_cnx_dest}"
     echo_debug "copy_check_sshkey - wait_board_restart \"${dst_ip}\""
     wait_board_restart "${dst_ip}"
