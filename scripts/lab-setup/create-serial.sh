@@ -194,6 +194,21 @@ remove_device_symlink()
             fi
             echo_log "  => ${device_name} disconnected"
         done
+        
+        #remove remaining link to any ttyUSB
+        if [ ! -z "`ls -l /dev/ | grep ttyUSB | grep ' -> '`" ]; then
+            SAVE_IFS=$IFS
+            IFS=$'\n'
+            for d in `ls -l /dev/ | grep ttyUSB | grep ' -> '`; do
+                dev=`echo $d | awk '{ print $9}'`        
+                if [ ! -z $dev -o "$dev" != "*" -o "$dev" != "*.*" ]; then
+                    echo_debug "sudo rm -rf /dev/`echo $d | awk '{ print $9}'`"
+                    sudo rm -rf /dev/`echo $d | awk '{ print $9}'`
+                fi
+            done
+            IFS=$SAVE_IFS
+        fi
+
         sudo rm -f /etc/udev/rules.d/50-lava-tty.rules
         DEVICE_LIST=""
         
@@ -561,6 +576,7 @@ ProcessAbort()
 # specific treatment for process abort
 {
     echo_error "Process Aborted"
+    stop_serial
     echo_error "=> rc before Abort: $1"
     echo_error "=> abort called after: $2 $3"
     exit 1
@@ -572,6 +588,7 @@ PostProcess()
 # cleaning before exit
 {
     echo_debug "PostProcess"
+    sudo rm -f *.err *.res
     echo_debug "=> rc: $1"
     echo_debug "=> exit after: $2 $3"
 }

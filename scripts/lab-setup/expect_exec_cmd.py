@@ -85,7 +85,9 @@ class expect_generic:
             raise expectError(expectError.REJECT)
 
         else:
-            if self.p.buffer.strip() == '':
+            #logging.debug("expect: return"+str(i))
+            #return i
+            if self.stripEscape(self.p.buffer).strip() == '':
                 logging.debug("expect: return"+str(i))
                 return i
             else:
@@ -199,13 +201,17 @@ class expect_generic:
             self.p.send(s)
             time.sleep(0.001)
         self.p.sendline('')
+
+    def stripEscape(self,string):
+        ansi_escape = re.compile(r'(\x9B|\x1B\[)[0-?]*[ -\/]*[@-~]')
+        return ansi_escape.sub('', string)
             
         
         
 class expect_serial(expect_generic):
 
     def connect(self,args):
-        self.expect(["Connected to %s console .*" % self.device,"ser2net port .*"])
+        self.expect(["Connected to .*","ser2net port .*"])
         logging.info(' => Done')
         self.p.setwinsize(1000,1000)
         
@@ -304,7 +310,9 @@ class expect_ssh(expect_generic):
         self.p.setwinsize(1000,1000)
         time.sleep(1)
         i = self.expect(["ssh: Could not resolve hostname (.*): Name or service not known",
-                  "Are you sure you want to continue connecting \(yes/no\)\?","password:", "# "])
+                  "Are you sure you want to continue connecting \(yes/no\)\?",
+                  "password:", 
+                  "# "])
         if i == 0:
             logging.error("### ERROR ### Name or service not known: %s" % self.p.match.group(1))
             print "### ERROR ### Name or service not known: %s" % self.p.match.group(1)

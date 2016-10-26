@@ -639,8 +639,8 @@ EOF
                 echo_debug "copy_check_sshkey END"
                 return 1
             fi
-            echo_debug "scp ${src_cnx_dest}_id_rsa.pub ${dst_cnx_dest}:.ssh/${src_cnx_dest}_id_rsa.pub"
-            scp ${src_cnx_dest}_id_rsa.pub ${dst_cnx_dest}:.ssh/${src_cnx_dest}_id_rsa.pub
+            echo_debug "scp ${src_cnx_dest}_id_rsa.pub ${dst_cnx_dest}:~/.ssh/${src_cnx_dest}_id_rsa.pub"
+            scp ${src_cnx_dest}_id_rsa.pub ${dst_cnx_dest}:~/.ssh/${src_cnx_dest}_id_rsa.pub
             rc=$?
             if [ $rc -ne 0 ]; then
                 echo_error "### ERROR ### Fail to copy public key from `uname -n` to ${dst_cnx_dest}"
@@ -672,8 +672,8 @@ EOF
 
             if  [ "${dst_cnx_type}" == "ssh" ]; then
                 echo_log "    => Copy local $src_file key via '${dst_cnx_type}' to ${dst_cnx_dest}"
-                echo_debug "scp $src_file ${dst_cnx_dest}:.ssh/${key_user_addr}_id_rsa.pub"
-                scp $src_file ${dst_cnx_dest}:.ssh/${key_user_addr}_id_rsa.pub
+                echo_debug "scp $src_file ${dst_cnx_dest}:~/.ssh/${key_user_addr}_id_rsa.pub"
+                scp $src_file ${dst_cnx_dest}:~/.ssh/${key_user_addr}_id_rsa.pub
                 rc=$?
             else
                 echo_log "    => Copy local $src_file key via '${dst_cnx_type}' to ${dst_cnx_dest}"
@@ -694,8 +694,8 @@ EOF
 
         if [ "${dst_cnx_type}" == "ssh" ]; then
             echo_log "    => Copy local ${src_file} key via '${dst_cnx_type}' to ${dst_cnx_dest}"
-            echo_debug "scp $src_file ${dst_cnx_dest}:.ssh/${key_user_addr}_id_rsa.pub"
-            scp $src_file ${dst_cnx_dest}:.ssh/${key_user_addr}_id_rsa.pub
+            echo_debug "scp $src_file ${dst_cnx_dest}:~/.ssh/${key_user_addr}_id_rsa.pub"
+            scp $src_file ${dst_cnx_dest}:~/.ssh/${key_user_addr}_id_rsa.pub
             rc=$?
         else
             echo_log "    => Copy local ${src_file} key via '${dst_cnx_type}' to ${dst_cnx_dest}"
